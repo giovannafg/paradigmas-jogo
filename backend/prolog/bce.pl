@@ -52,6 +52,8 @@
             jogada_valida/5,     % +Mesa, +Amigos, +Sentados, +Amigo, +Cadeira
             status_manias/4,     % +Mesa, +Amigos, +Sentados, -Status
             venceu/3,            % +Mesa, +Amigos, +Sentados
+            solve/4,             % +Mesa, +Amigos, +Sentados, -Solucao
+            count_solutions/5,   % +Mesa, +Amigos, +Sentados, +Limite, -N
             fase_exemplo/3       % -Mesa, -Amigos, -Sentados
           ]).
 
@@ -59,6 +61,8 @@
 :- use_module(library(lists)).
 :- use_module(library(apply)).
 :- use_module(library(pairs)).
+:- use_module(library(solution_sequences)).
+:- use_module(library(aggregate)).
 
 
 /* =========================================================================
@@ -403,7 +407,26 @@ venceu(Mesa, Amigos, Sentados) :-
 
 
 /* =========================================================================
-   6. EXEMPLO PARA O TERMINAL
+   6. RESOLVEDOR
+   ========================================================================= */
+
+%!  solve(+Mesa, +Amigos, +Sentados, -Solucao) is nondet.
+%
+%   Solucao = [[Amigo, Linha, Coluna], ...] com todos os amigos da fase,
+%   mantendo os Sentados no lugar. Falha se não houver solução.
+solve(Mesa, Amigos, Sentados, Solucao) :-
+    estado_valido(Mesa, Amigos, Sentados),
+    restricoes(Mesa, Amigos, Sentados, Solucao),
+    lugares_vars(Solucao, Vars),
+    labeling([ff], Vars).
+
+%!  count_solutions(+Mesa, +Amigos, +Sentados, +Limite, -N) is det.
+count_solutions(Mesa, Amigos, Sentados, Limite, N) :-
+    aggregate_all(count, limit(Limite, solve(Mesa, Amigos, Sentados, _)), N).
+
+
+/* =========================================================================
+   7. EXEMPLO PARA O TERMINAL
    ========================================================================= */
 
 %!  fase_exemplo(-Mesa, -Amigos, -Sentados) is det.
