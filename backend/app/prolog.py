@@ -22,10 +22,14 @@ import janus_swi as janus
 
 Grid = list[list[int]]
 
-PROLOG_FILE = Path(__file__).parent.parent / "prolog" / "sudoku.pl"
+PROLOG_DIR = Path(__file__).parent.parent / "prolog"
+PROLOG_FILE = PROLOG_DIR / "sudoku.pl"
+BCE_API_FILE = PROLOG_DIR / "bce_api.pl"
 
 # consult/1 carrega o arquivo .pl, como `?- [sudoku].` no terminal do swipl.
+# bce_api.pl carrega o bce.pl sozinho (use_module).
 janus.consult(str(PROLOG_FILE))
+janus.consult(str(BCE_API_FILE))
 
 
 class NoSolution(Exception):
@@ -71,3 +75,100 @@ def hint(board: Grid) -> tuple[int, int, int]:
         case [row, col, value]:
             return row, col, value
     raise ValueError(f"resultado inesperado de hint/2: {result!r}")
+
+
+# ---------------------------------------------------------------------------
+# Grupo de Estudo na BCE (prolog/bce_api.pl)
+#
+# Lugar = [nome, linha, coluna], usado para objetos, fixos e sentados.
+# Os nomes vão como strings e o bce_api.pl os converte em átomos.
+# ---------------------------------------------------------------------------
+
+Lugar = list  # [str, int, int]
+
+
+class InvalidState(Exception):
+    """O estado enviado não pode existir (ver estado_valido/3 no bce.pl)."""
+
+
+class InvalidMove(Exception):
+    """A jogada não é permitida no estado atual."""
+
+
+def nova_fase(dificuldade: str) -> dict:
+    result = janus.query_once(
+        "bce_api:nova_fase(D, L, C, Objetos, Amigos, Fixos, Manias)",
+        {"D": dificuldade},
+    )
+    return {
+        "linhas": result["L"],
+        "colunas": result["C"],
+        "objetos": result["Objetos"],
+        "amigos": result["Amigos"],
+        "fixos": result["Fixos"],
+        "manias": result["Manias"],
+    }
+
+
+def _resultado(result) -> tuple[list[Lugar], list[list[str]], bool]:
+    # O Prolog decide o que aconteceu; aqui só traduzimos cada forma, como
+    # em hint() acima. Átomos chegam como strings, inclusive true/false.
+    match result:
+        case "invalido":
+            raise InvalidState
+        case "jogada_invalida":
+            raise InvalidMove
+        case [sentados, status, venceu]:
+            return sentados, status, venceu == "true"
+    raise ValueError(f"resultado inesperado do bce_api: {result!r}")
+
+
+def estado(
+    linhas: int,
+    colunas: int,
+    objetos: list[Lugar],
+    amigos: list[str],
+    fixos: list[Lugar],
+    sentados: list[Lugar],
+) -> tuple[list[Lugar], list[list[str]], bool]:
+    result = janus.query_once(
+        "bce_api:estado(L, C, Objetos, Amigos, Fixos, Sentados, R)",
+        {
+            "L": linhas,
+            "C": colunas,
+            "Objetos": objetos,
+            "Amigos": amigos,
+            "Fixos": fixos,
+            "Sentados": sentados,
+        },
+    )
+    return _resultado(result["R"])
+
+
+def jogada(
+    linhas: int,
+    colunas: int,
+    objetos: list[Lugar],
+    amigos: list[str],
+    fixos: list[Lugar],
+    sentados: list[Lugar],
+    amigo: str,
+    linha: int,
+    coluna: int,
+) -> tuple[list[Lugar], list[list[str]], bool]:
+    result = janus.query_once(
+        "bce_api:jogada(L, C, Objetos, Amigos, Fixos, Sentados,"
+        " Amigo, Linha, Coluna, R)",
+        {
+            "L": linhas,
+            "C": colunas,
+            "Objetos": objetos,
+            "Amigos": amigos,
+            "Fixos": fixos,
+            "Sentados": sentados,
+            "Amigo": amigo,
+            "Linha": linha,
+            "Coluna": coluna,
+        },
+    )
+    return _resultado(result["R"])
