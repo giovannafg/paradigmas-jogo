@@ -72,3 +72,157 @@ def hint(request: BoardRequest) -> HintResponse:
     except prolog.BoardComplete:
         raise HTTPException(status_code=422, detail=BOARD_COMPLETE) from None
     return HintResponse(row=row, col=col, value=value)
+
+
+# ---------------------------------------------------------------------------
+# Grupo de Estudo na BCE
+#
+# O formato do JSON está descrito em docs/API.md. Os modelos abaixo são esse
+# formato: o FastAPI valida as requisições com eles e os mostra em /docs.
+# ---------------------------------------------------------------------------
+
+Coordenada = Annotated[int, Field(ge=0)]
+Dificuldade = Literal["facil", "medio", "dificil"]
+StatusMania = Literal["ok", "violada", "pendente"]
+
+
+class Objeto(BaseModel):
+    objeto: str
+    linha: Coordenada
+    coluna: Coordenada
+
+
+class Lugar(BaseModel):
+    amigo: str
+    linha: Coordenada
+    coluna: Coordenada
+
+
+class Mesa(BaseModel):
+    linhas: Annotated[int, Field(ge=1, le=6)]
+    colunas: Annotated[int, Field(ge=1, le=6)]
+    objetos: list[Objeto]
+
+
+class Mania(BaseModel):
+    amigo: str
+    tipo: str
+    # Um objeto ("porta"), um amigo ("joao"), uma lista de amigos
+    # (["arthur", "joao"]) ou nada, conforme o tipo. Ver docs/API.md.
+    alvo: str | list[str] | None = None
+
+
+class Fase(BaseModel):
+    mesa: Mesa
+    amigos: list[str]
+    fixos: list[Lugar]
+    # As manias vêm do Prolog só para o Elm mostrar nos cards. Se o Elm
+    # mandar de volta, são ignoradas: quem decide as manias é o mania/2.
+    manias: list[Mania] = []
+
+
+class NovaFaseRequest(BaseModel):
+    dificuldade: Dificuldade = "facil"
+
+
+class EstadoRequest(BaseModel):
+    fase: Fase
+    sentados: list[Lugar]
+
+
+class JogadaRequest(BaseModel):
+    fase: Fase
+    sentados: list[Lugar]
+    amigo: str
+    linha: Coordenada
+    coluna: Coordenada
+
+
+class Status(BaseModel):
+    amigo: str
+    status: StatusMania
+
+
+class EstadoResponse(BaseModel):
+    sentados: list[Lugar]
+    status: list[Status]
+    venceu: bool
+
+
+INVALID_STATE = "Este estado não existe no jogo. Confira a mesa e quem está sentado."
+INVALID_MOVE = (
+    "Essa jogada não é permitida: a cadeira está ocupada ou fora da mesa, "
+    "ou o amigo já sentou ou não está nesta fase."
+)
+
+
+def _lugares(lugares: list[Lugar]) -> list[list]:
+    return [[lugar.amigo, lugar.linha, lugar.coluna] for lugar in lugares]
+
+
+def _argumentos_da_fase(fase: Fase) -> dict:
+    return {
+        "linhas": fase.mesa.linhas,
+        "colunas": fase.mesa.colunas,
+        "objetos": [[o.objeto, o.linha, o.coluna] for o in fase.mesa.objetos],
+        "amigos": fase.amigos,
+        "fixos": _lugares(fase.fixos),
+    }
+
+
+def _estado_response(resultado) -> EstadoResponse:
+    sentados, status, venceu = resultado
+    return EstadoResponse(
+        sentados=[Lugar(amigo=a, linha=l, coluna=c) for a, l, c in sentados],
+        status=[Status(amigo=a, status=s) for a, s in status],
+        venceu=venceu,
+    )
+
+
+@app.post("/api/fase/nova")
+def nova_fase(request: NovaFaseRequest) -> Fase:
+    fase = prolog.nova_fase(request.dificuldade)
+    return Fase(
+        mesa=Mesa(
+            linhas=fase["linhas"],
+            colunas=fase["colunas"],
+            objetos=[
+                Objeto(objeto=o, linha=l, coluna=c) for o, l, c in fase["objetos"]
+            ],
+        ),
+        amigos=fase["amigos"],
+        fixos=[Lugar(amigo=a, linha=l, coluna=c) for a, l, c in fase["fixos"]],
+        # Args é [] (sem alvo) ou [alvo]: ver nova_fase/7 em bce_api.pl.
+        manias=[
+            Mania(amigo=a, tipo=t, alvo=args[0] if args else None)
+            for a, t, args in fase["manias"]
+        ],
+    )
+
+
+@app.post("/api/fase/estado")
+def estado(request: EstadoRequest) -> EstadoResponse:
+    try:
+        resultado = prolog.estado(
+            **_argumentos_da_fase(request.fase), sentados=_lugares(request.sentados)
+        )
+    except prolog.InvalidState:
+        raise HTTPException(status_code=422, detail=INVALID_STATE) from None
+    return _estado_response(resultado)
+
+
+@app.post("/api/fase/jogada")
+def jogada(request: JogadaRequest) -> EstadoResponse:
+    try:
+        resultado = prolog.jogada(
+            **_argumentos_da_fase(request.fase),
+            sentados=_lugares(request.sentados),
+            amigo=request.amigo,
+            linha=request.linha,
+            coluna=request.coluna,
+        )
+    except prolog.InvalidState:
+        raise HTTPException(status_code=422, detail=INVALID_STATE) from None
+    except prolog.InvalidMove:
+        raise HTTPException(status_code=422, detail=INVALID_MOVE) from None
+    return _estado_response(resultado)
