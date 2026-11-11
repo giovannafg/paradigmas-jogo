@@ -47,3 +47,40 @@ test(respeita_limite, N == 2) :-
     count_solutions(Mesa, Amigos, [], 2, N).
 
 :- end_tests(solve).
+
+:- begin_tests(generate).
+
+niveis([facil, medio, dificil]).
+
+test(solucao_unica, forall((niveis(Ns), member(N, Ns), between(1, 5, _)))) :-
+    generate(N, Mesa, Amigos, Sentados),
+    count_solutions(Mesa, Amigos, Sentados, 2, 1).
+
+test(estado_valido, forall((niveis(Ns), member(N, Ns)))) :-
+    generate(N, Mesa, Amigos, Sentados),
+    estado_valido(Mesa, Amigos, Sentados).
+
+test(sobra_jogo, forall((niveis(Ns), member(N, Ns)))) :-
+    generate(N, _, Amigos, Sentados),
+    length(Amigos, A),
+    length(Sentados, S),
+    A - S >= 3.
+
+test(tamanho_por_nivel, [Tamanhos == [2-3-4, 3-3-5, 3-4-7]]) :-
+    niveis(Ns),
+    findall(L-C-A,
+            ( member(N, Ns),
+              generate(N, mesa(L, C, _), Amigos, _),
+              length(Amigos, A) ),
+            Tamanhos).
+
+test(rapido, forall((niveis(Ns), member(N, Ns)))) :-
+    statistics(cputime, T0),
+    generate(N, _, _, _),
+    statistics(cputime, T1),
+    T1 - T0 < 2.
+
+test(nivel_desconhecido, fail) :-
+    generate(impossivel, _, _, _).
+
+:- end_tests(generate).
