@@ -54,6 +54,7 @@
             venceu/3,            % +Mesa, +Amigos, +Sentados
             solve/4,             % +Mesa, +Amigos, +Sentados, -Solucao
             count_solutions/5,   % +Mesa, +Amigos, +Sentados, +Limite, -N
+            generate/4,          % +Nivel, -Mesa, -Amigos, -Sentados
             fase_exemplo/3       % -Mesa, -Amigos, -Sentados
           ]).
 
@@ -63,6 +64,7 @@
 :- use_module(library(pairs)).
 :- use_module(library(solution_sequences)).
 :- use_module(library(aggregate)).
+:- use_module(library(random)).
 
 
 /* =========================================================================
@@ -426,7 +428,82 @@ count_solutions(Mesa, Amigos, Sentados, Limite, N) :-
 
 
 /* =========================================================================
-   7. EXEMPLO PARA O TERMINAL
+   7. GERADOR
+   ========================================================================= */
+
+%!  generate(+Nivel, -Mesa, -Amigos, -Sentados) is semidet.
+%
+%   Nivel é facil, medio ou dificil. A fase gerada tem solução única e
+%   Sentados são os amigos que já começam na cadeira (as âncoras).
+generate(Nivel, Mesa, Amigos, Sentados) :-
+    nivel(Nivel, _, _, _, _),
+    between(1, 50, _),
+    fase_candidata(Nivel, Mesa, Amigos, Sentados),
+    !.
+
+%   nivel(Nivel, Linhas, Colunas, NumAmigos, MaxSentados)
+nivel(facil,   2, 3, 4, 1).
+nivel(medio,   3, 3, 5, 2).
+nivel(dificil, 3, 4, 7, 3).
+
+fase_candidata(Nivel, Mesa, Amigos, Sentados) :-
+    nivel(Nivel, Linhas, Colunas, NumAmigos, MaxSentados),
+    findall(A, amigo(A), Todos),
+    random_permutation(Todos, Embaralhados),
+    length(Amigos, NumAmigos),
+    append(Amigos, _, Embaralhados),
+    objetos_aleatorios(Linhas, Colunas, Objetos),
+    Mesa = mesa(Linhas, Colunas, Objetos),
+    solucao_aleatoria(Mesa, Amigos, Solucao),
+    random_permutation(Solucao, Candidatos),
+    ancoras(Mesa, Amigos, Candidatos, [], Ancoras),
+    enxuga(Mesa, Amigos, Ancoras, Ancoras, Sentados),
+    length(Sentados, N),
+    N =< MaxSentados.
+
+objetos_aleatorios(Linhas, Colunas, Objetos) :-
+    findall([L, C], (between(1, Linhas, L1), L is L1 - 1,
+                     between(1, Colunas, C1), C is C1 - 1), Cadeiras),
+    random_permutation(Cadeiras, [[LP, CP], [LT, CT], [LD, CD] | _]),
+    random_member(Decoracao, [janela, estante]),
+    Objetos = [[porta, LP, CP], [tomada, LT, CT], [Decoracao, LD, CD]].
+
+solucao_aleatoria(Mesa, Amigos, Solucao) :-
+    restricoes(Mesa, Amigos, [], Solucao),
+    lugares_vars(Solucao, Vars),
+    once(rotulo_aleatorio(Vars)).
+
+rotulo_aleatorio([]).
+rotulo_aleatorio([V | Vs]) :-
+    (   integer(V)
+    ->  true
+    ;   fd_dom(V, Dom),
+        findall(X, (X in Dom, indomain(X)), Valores),
+        random_permutation(Valores, Ordem),
+        member(V, Ordem)
+    ),
+    rotulo_aleatorio(Vs).
+
+%   Fixa amigos da solução, um por vez, até a solução ficar única.
+ancoras(Mesa, Amigos, Candidatos, Ancoras0, Ancoras) :-
+    (   count_solutions(Mesa, Amigos, Ancoras0, 2, 1)
+    ->  Ancoras = Ancoras0
+    ;   Candidatos = [Lugar | Resto],
+        ancoras(Mesa, Amigos, Resto, [Lugar | Ancoras0], Ancoras)
+    ).
+
+%   Tira as âncoras que não são necessárias para a solução continuar única.
+enxuga(_, _, [], Ancoras, Ancoras).
+enxuga(Mesa, Amigos, [Lugar | Resto], Ancoras0, Ancoras) :-
+    selectchk(Lugar, Ancoras0, Sem),
+    (   count_solutions(Mesa, Amigos, Sem, 2, 1)
+    ->  enxuga(Mesa, Amigos, Resto, Sem, Ancoras)
+    ;   enxuga(Mesa, Amigos, Resto, Ancoras0, Ancoras)
+    ).
+
+
+/* =========================================================================
+   8. EXEMPLO PARA O TERMINAL
    ========================================================================= */
 
 %!  fase_exemplo(-Mesa, -Amigos, -Sentados) is det.
