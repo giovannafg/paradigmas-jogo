@@ -333,9 +333,11 @@ coordenadas([_, L, C], [L, C]).
 %   ninguém senta duas vezes, toda cadeira está dentro da mesa e não há
 %   duas pessoas na mesma cadeira. Não olha as manias (isso é
 %   status_manias/4): um estado com mania ❌ continua sendo um estado.
+%   A mesa tem de 1 a 6 linhas e colunas (os níveis usam até 3x4): mesas
+%   maiores travariam solve/hint.
 estado_valido(mesa(Linhas, Colunas, Objetos), Amigos, Sentados) :-
-    integer(Linhas), Linhas > 0,
-    integer(Colunas), Colunas > 0,
+    dimensao_valida(Linhas),
+    dimensao_valida(Colunas),
     maplist(amigo, Amigos),
     sort(Amigos, AmigosUnicos), same_length(Amigos, AmigosUnicos),
     maplist(objeto_valido(Linhas, Colunas), Objetos),
@@ -352,6 +354,10 @@ sentado_valido(Linhas, Colunas, Amigos, [Amigo, L, C]) :-
 objeto_valido(Linhas, Colunas, [Objeto, L, C]) :-
     objeto(Objeto),
     cadeira_na_mesa(Linhas, Colunas, L, C).
+
+dimensao_valida(N) :-
+    integer(N),
+    between(1, 6, N).
 
 cadeira_na_mesa(Linhas, Colunas, L, C) :-
     integer(L), integer(C),
@@ -525,6 +531,9 @@ enxuga(Mesa, Amigos, [Lugar | Resto], Ancoras0, Ancoras) :-
 %   Retorna uma jogada forçada, indica que a mesa está completa
 %   ou que não existe solução para o estado atual.
 %
+%   Dica é [sentar, Amigo, L, C, Dono], [completo] ou [sem_solucao]. Dono é
+%   o amigo cuja mania força a jogada, ou `nenhuma` se só a mesa a força.
+%
 %   Falha se o estado for inválido ou se não houver uma jogada forçada.
 hint(Mesa, Amigos, Sentados, Dica) :-
     estado_valido(Mesa, Amigos, Sentados),
@@ -569,10 +578,12 @@ cadeira_possivel(Mesa, Amigos, Manias, Sentados, Amigo, L, C) :-
             once(labeling([ff], Vars))
           ).
 
+%   Sem nenhuma mania a cadeira é forçada só pela mesa (eliminação): o
+%   motivo é o átomo `nenhuma`, não uma mania.
+motivo(_, [], nenhuma) :-
+    !.
 motivo(Amigo, Manias, Amigo) :-
-    (   Manias == []
-    ;   memberchk(Amigo, Manias)
-    ),
+    memberchk(Amigo, Manias),
     !.
 motivo(_, [Dono | _], Dono).
 

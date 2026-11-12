@@ -71,6 +71,12 @@ test(mesa_sem_cadeiras, fail) :-
 test(mesa_negativa, fail) :-
     estado_valido(mesa(-1, 3, []), [arthur], []).
 
+test(mesa_grande_demais, fail) :-
+    estado_valido(mesa(1000000, 1000000, []), [arthur], []).
+
+test(mesa_no_limite) :-
+    estado_valido(mesa(6, 6, []), [arthur], []).
+
 :- end_tests(estado_valido).
 
 :- begin_tests(jogada_valida).
@@ -291,7 +297,7 @@ test(mania_de_outro_amigo, Dica == [sentar, arthur, 0, 1, bevi]) :-
     fase_exemplo(Mesa, Amigos, Sentados),
     hint(Mesa, Amigos, [[mayara, 0, 0], [joao, 0, 2] | Sentados], Dica).
 
-test(ultima_cadeira_livre, Dica == [sentar, joao, 0, 1, joao]) :-
+test(ultima_cadeira_livre, Dica == [sentar, joao, 0, 1, nenhuma]) :-
     hint(mesa(1, 2, []), [arthur, joao], [[arthur, 0, 0]], Dica).
 
 test(completo, Dica == [completo]) :-
@@ -325,7 +331,10 @@ segue_dicas(Mesa, Amigos, Sentados, Solucao) :-
     (   Dica == [completo]
     ->  true
     ;   Dica = [sentar, Amigo, L, C, Dono],
-        mania(Dono, _),
+        (   Dono == nenhuma
+        ->  true
+        ;   mania(Dono, _)
+        ),
         memberchk([Amigo, L, C], Solucao),
         segue_dicas(Mesa, Amigos, [[Amigo, L, C] | Sentados], Solucao)
     ).

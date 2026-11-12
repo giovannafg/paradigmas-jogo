@@ -154,7 +154,14 @@ Pedido: `{"fase": Fase, "sentados": [Lugar]}`. Resposta:
 
 `motivo` é a mania que força a jogada, no mesmo formato de **Mania**. O Elm
 monta a frase ("A Mayara não pode ficar perto do João..."), assim o texto
-fica num lugar só. 422 se a fase já terminou ou não tem solução.
+fica num lugar só. Quando nenhuma mania é necessária (a cadeira sobra por
+eliminação, só pela mesa), `motivo` é `null`. 422 se a fase já terminou ou
+não tem solução.
+
+No Prolog, `hint/4` devolve `[sentar, Amigo, Linha, Coluna, Dono]`,
+`[completo]` ou `[sem_solucao]`. `Dono` é o amigo da mania que força a
+jogada, ou o átomo `nenhuma` (vira `motivo: null`). `hint/4` falha se o
+estado for inválido ou se nenhuma jogada for forçada.
 
 ### `POST /api/fase/resolver` (depende do #5)
 
