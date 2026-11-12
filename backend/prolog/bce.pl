@@ -334,7 +334,10 @@ coordenadas([_, L, C], [L, C]).
 %   duas pessoas na mesma cadeira. Não olha as manias (isso é
 %   status_manias/4): um estado com mania ❌ continua sendo um estado.
 estado_valido(mesa(Linhas, Colunas, Objetos), Amigos, Sentados) :-
+    integer(Linhas), Linhas > 0,
+    integer(Colunas), Colunas > 0,
     maplist(amigo, Amigos),
+    sort(Amigos, AmigosUnicos), same_length(Amigos, AmigosUnicos),
     maplist(objeto_valido(Linhas, Colunas), Objetos),
     is_list(Sentados),
     maplist(sentado_valido(Linhas, Colunas, Amigos), Sentados),
