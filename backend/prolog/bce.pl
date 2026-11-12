@@ -55,6 +55,7 @@
             solve/4,             % +Mesa, +Amigos, +Sentados, -Solucao
             count_solutions/5,   % +Mesa, +Amigos, +Sentados, +Limite, -N
             generate/4,          % +Nivel, -Mesa, -Amigos, -Sentados
+            hint/4,              % +Mesa, +Amigos, +Sentados, -Dica
             fase_exemplo/3       % -Mesa, -Amigos, -Sentados
           ]).
 
@@ -266,11 +267,16 @@ amigos_citados(_, []).
 %   em Sentados). Impõe: cadeira dentro da mesa, um amigo por cadeira e
 %   todas as manias. Não faz a busca: quem resolve chama label/1 sobre
 %   lugares_vars/2. Falha se a propagação já provar que é impossível.
-restricoes(mesa(Linhas, Colunas, Objetos), Amigos, Sentados, Lugares) :-
+restricoes(Mesa, Amigos, Sentados, Lugares) :-
+    restricoes(Mesa, Amigos, Amigos, Sentados, Lugares).
+
+%   Só impõe as manias de ComMania: a dica (seção 8) testa subconjuntos.
+restricoes(mesa(Linhas, Colunas, Objetos), Amigos, ComMania, Sentados,
+           Lugares) :-
     maplist(lugar_inicial(Linhas, Colunas, Sentados), Amigos, Pares),
     um_por_cadeira(Colunas, Pares),
     ctx(Objetos, Pares, Ctx),
-    maplist(impoe_mania(Ctx), Amigos),
+    maplist(impoe_mania(Ctx), ComMania),
     maplist(par_lista, Pares, Lugares).
 
 lugar_inicial(Linhas, Colunas, Sentados, Amigo, Amigo-cad(L, C)) :-
@@ -503,7 +509,91 @@ enxuga(Mesa, Amigos, [Lugar | Resto], Ancoras0, Ancoras) :-
 
 
 /* =========================================================================
-   8. EXEMPLO PARA O TERMINAL
+   8. DICA
+   =========================================================================
+
+   Uma cadeira é considerada forçada quando um conjunto de manias já é suficiente para
+   deixar apenas uma opção para o amigo. Procuramos o menor conjunto de manias possível
+   e usamos uma delas como motivo da dica.
+*/
+
+%!  hint(+Mesa, +Amigos, +Sentados, -Dica) is semidet.
+%
+%   Retorna uma jogada forçada, indica que a mesa está completa
+%   ou que não existe solução para o estado atual.
+%
+%   Falha se o estado for inválido ou se não houver uma jogada forçada.
+hint(Mesa, Amigos, Sentados, Dica) :-
+    estado_valido(Mesa, Amigos, Sentados),
+    (   \+ solve(Mesa, Amigos, Sentados, _)
+    ->  Dica = [sem_solucao]
+    ;   length(Amigos, N),
+        length(Sentados, N)
+    ->  Dica = [completo]
+    ;   jogada_forcada(Mesa, Amigos, Sentados, Amigo, L, C, Manias),
+        motivo(Amigo, Manias, Dono),
+        Dica = [sentar, Amigo, L, C, Dono]
+    ).
+
+jogada_forcada(Mesa, Amigos, Sentados, Amigo, L, C, Manias) :-
+    include(tem_mania, Amigos, ComMania),
+    exclude(ja_sentou(Sentados), Amigos, DePe),
+    length(ComMania, Max),
+    between(0, Max, K),
+    combinacao(K, ComMania, Manias),
+    partition(pertence(Manias), DePe, Citados, Outros),
+    append(Citados, Outros, Candidatos),
+    member(Amigo, Candidatos),
+    unica_cadeira(Mesa, Amigos, Manias, Sentados, Amigo, L, C),
+    !.
+
+unica_cadeira(Mesa, Amigos, Manias, Sentados, Amigo, L, C) :-
+    findall(L0-C0,
+            limit(2, cadeira_possivel(Mesa, Amigos, Manias, Sentados,
+                                      Amigo, L0, C0)),
+            [L-C]).
+
+cadeira_possivel(Mesa, Amigos, Manias, Sentados, Amigo, L, C) :-
+    Mesa = mesa(Linhas, Colunas, _),
+    UltimaL is Linhas - 1,
+    UltimaC is Colunas - 1,
+    between(0, UltimaL, L),
+    between(0, UltimaC, C),
+    \+ memberchk([_, L, C], Sentados),
+    \+ \+ ( restricoes(Mesa, Amigos, Manias, Sentados, Lugares),
+            memberchk([Amigo, L, C], Lugares),
+            lugares_vars(Lugares, Vars),
+            once(labeling([ff], Vars))
+          ).
+
+motivo(Amigo, Manias, Amigo) :-
+    (   Manias == []
+    ;   memberchk(Amigo, Manias)
+    ),
+    !.
+motivo(_, [Dono | _], Dono).
+
+tem_mania(Amigo) :-
+    mania(Amigo, _).
+
+ja_sentou(Sentados, Amigo) :-
+    memberchk([Amigo, _, _], Sentados).
+
+pertence(Lista, X) :-
+    memberchk(X, Lista).
+
+combinacao(0, _, []).
+combinacao(K, [X | Xs], [X | Ys]) :-
+    K > 0,
+    K1 is K - 1,
+    combinacao(K1, Xs, Ys).
+combinacao(K, [_ | Xs], Ys) :-
+    K > 0,
+    combinacao(K, Xs, Ys).
+
+
+/* =========================================================================
+   9. EXEMPLO PARA O TERMINAL
    ========================================================================= */
 
 %!  fase_exemplo(-Mesa, -Amigos, -Sentados) is det.

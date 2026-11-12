@@ -84,3 +84,58 @@ test(nivel_desconhecido, fail) :-
     generate(impossivel, _, _, _).
 
 :- end_tests(generate).
+
+:- begin_tests(hint).
+
+test(propria_mania_forca, Dica == [sentar, joao, 0, 2, joao]) :-
+    fase_exemplo(Mesa, Amigos, Sentados),
+    hint(Mesa, Amigos, Sentados, Dica).
+
+test(mania_do_proprio_amigo, Dica == [sentar, mayara, 0, 0, mayara]) :-
+    fase_exemplo(Mesa, Amigos, Sentados),
+    hint(Mesa, Amigos, [[joao, 0, 2] | Sentados], Dica).
+
+test(mania_de_outro_amigo, Dica == [sentar, arthur, 0, 1, bevi]) :-
+    fase_exemplo(Mesa, Amigos, Sentados),
+    hint(Mesa, Amigos, [[mayara, 0, 0], [joao, 0, 2] | Sentados], Dica).
+
+test(ultima_cadeira_livre, Dica == [sentar, joao, 0, 1, joao]) :-
+    hint(mesa(1, 2, []), [arthur, joao], [[arthur, 0, 0]], Dica).
+
+test(completo, Dica == [completo]) :-
+    fase_exemplo(Mesa, Amigos, Sentados),
+    once(solve(Mesa, Amigos, Sentados, Solucao)),
+    hint(Mesa, Amigos, Solucao, Dica).
+
+test(sem_solucao, Dica == [sem_solucao]) :-
+    fase_exemplo(Mesa, Amigos, Sentados),
+    hint(Mesa, Amigos, [[mayara, 0, 1] | Sentados], Dica).
+
+test(completo_errado, Dica == [sem_solucao]) :-
+    fase_exemplo(Mesa, Amigos, Sentados),
+    hint(Mesa, Amigos,
+         [[arthur, 0, 0], [joao, 0, 2], [mayara, 0, 1] | Sentados], Dica).
+
+test(nada_forcado, fail) :-
+    hint(mesa(1, 2, []), [arthur, joao], [], _).
+
+test(estado_invalido, fail) :-
+    fase_exemplo(Mesa, Amigos, _),
+    hint(Mesa, Amigos, [[bevi, 9, 9]], _).
+
+test(dicas_resolvem_fase, forall(member(N, [facil, medio, dificil]))) :-
+    generate(N, Mesa, Amigos, Sentados),
+    once(solve(Mesa, Amigos, Sentados, Solucao)),
+    segue_dicas(Mesa, Amigos, Sentados, Solucao).
+
+segue_dicas(Mesa, Amigos, Sentados, Solucao) :-
+    hint(Mesa, Amigos, Sentados, Dica),
+    (   Dica == [completo]
+    ->  true
+    ;   Dica = [sentar, Amigo, L, C, Dono],
+        mania(Dono, _),
+        memberchk([Amigo, L, C], Solucao),
+        segue_dicas(Mesa, Amigos, [[Amigo, L, C] | Sentados], Solucao)
+    ).
+
+:- end_tests(hint).
