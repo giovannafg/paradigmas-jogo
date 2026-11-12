@@ -179,6 +179,23 @@
   que Maybe ou Result, etc.
 -->
 
+**Domínio (`frontend/src/Bce.elm`).** Módulo puro, sem HTTP nem HTML. Cada
+pergunta do jogo é um custom type fechado, para o compilador recusar valores
+inválidos:
+
+- `Amigo` e `Objeto` (`Bce.elm:63`, `Bce.elm:73`): lista fechada, em vez de
+  `String`. Um `case` que esquece a Mayara não compila.
+- `Mania` (`Bce.elm:217`): cada construtor carrega só o alvo que usa
+  (`SemVizinhos` não tem alvo, `PertoDe` exige um `Amigo`). Com um record de
+  campos opcionais seria possível montar "perto de" sem ninguém.
+- `StatusMania` (`Bce.elm:384`): `Respeitada | Violada | Pendente`, em vez de
+  `Maybe Bool`, cujo `Nothing` não diz o que significa.
+- `Rodada` (`Bce.elm:432`): `Jogando | Venceu Estrelas`. A vitória carrega as
+  estrelas, então não existe "venceu sem nota".
+- `Recusa` (`Bce.elm:276`): o motivo de uma jogada recusada; `sentar` e
+  `levantar` devolvem `Result Recusa (List Lugar)` (`Bce.elm:310`,
+  `Bce.elm:331`) no lugar de exceção ou `Bool` ignorado.
+
 ```elm
 [type alias Model = ...]
 [type Msg = ...]
