@@ -77,20 +77,27 @@ fato em restrição CLP(FD).
 
 ## O que o Prolog faz
 
-O Prolog é o cérebro do jogo. O Python só repassa as requisições.
+O Prolog é o cérebro do jogo (`backend/prolog/bce.pl`). O Python só repassa
+as requisições: o `bce_api.pl` traduz o JSON para os termos do `bce.pl`, e
+as rotas estão em `docs/API.md`.
 
-- **Base de conhecimento:** o mapa da mesa (`objeto(tomada, 0, 2)`), os
-  amigos da fase e as manias (`mania/2`).
-- **Resolver (`solve`):** um interpretador transforma cada fato `mania/2` em
-  restrições CLP(FD) sobre a posição de cada amigo, e a busca encontra o
+- **Base de conhecimento:** os amigos (`amigo/1`), os objetos (`objeto/1`) e
+  as manias (`mania/2`). A mesa é o termo `mesa(Linhas, Colunas, Objetos)`,
+  com cada objeto na sua cadeira, como `[tomada, 0, 2]`.
+- **Resolver (`solve/4`):** um interpretador transforma cada fato `mania/2`
+  em restrições CLP(FD) sobre a posição de cada amigo, e a busca encontra o
   arranjo que satisfaz todas.
-- **Gerar (`generate`):** escolhe o tamanho da mesa, quais amigos entram,
-  onde ficam os objetos e quem já começa sentado. Só aceita a fase quando
-  existe **exatamente uma** solução, para que ela sempre possa ser resolvida
-  só com raciocínio, sem chute.
-- **Dica (`hint`):** encontra um amigo cuja cadeira já é forçada pelo estado
-  atual e **explica qual mania força** essa jogada.
-- **Validar jogada:** diz quais manias estão ✅ ou ❌ no tabuleiro atual.
+- **Gerar (`generate/4`):** a partir do nível, sorteia os amigos e coloca a
+  porta, a tomada e uma janela ou estante. Só aceita a fase quando existe
+  **exatamente uma** solução (`count_solutions/5`), para que ela sempre
+  possa ser resolvida só com raciocínio, sem chute.
+- **Dica (`hint/4`):** encontra um amigo cuja cadeira já é forçada pelo
+  estado atual e **diz qual mania força** essa jogada. Quando a cadeira
+  sobra só por eliminação, a dica não cita mania.
+- **Validar:** `estado_valido/3` recusa estados impossíveis (amigo
+  desconhecido, duas pessoas na mesma cadeira, mesa fora de 1x1 a 6x6),
+  `jogada_valida/5` confere a jogada, `status_manias/4` diz se cada mania
+  está ✅, ❌ ou pendente e `venceu/3` confere a vitória.
 
 ### Por que existem amigos já sentados
 
@@ -130,9 +137,17 @@ fileira de cima, só a ponta da esquerda fica longe dele."*
 
 ## Dificuldade
 
-- **Fácil:** 3 ou 4 amigos, mesa pequena, manias diretas (objetos).
-- **Difícil:** até os 7 amigos, mesa maior, manias que só se resolvem
-  combinadas (ex.: a da Mayara junto com a do Bevi).
+O gerador tem três níveis:
+
+| Nível | Mesa | Amigos | Amigos já sentados |
+|---|---|---|---|
+| Fácil | 2x3 | 4 | até 1 |
+| Médio | 3x3 | 5 | até 2 |
+| Difícil | 3x4 | 7 | até 3 |
+
+Os amigos de cada fase são sorteados, então as manias que aparecem mudam de
+uma fase para outra.
+
 - **Extra, se der tempo:** medir a dificuldade pelo número de passos de
   dedução, e um editor de manias em que o Prolog diz se a fase continua
   possível ou quais regras entram em conflito.
@@ -142,29 +157,28 @@ fileira de cima, só a ponta da esquerda fica longe dele."*
 - A mesa como grade, com os ícones dos objetos e os amigos sentados (os já
   sentados aparecem travados).
 - Os cards dos amigos, cada um com a mania e o status ✅ ou ❌.
-- Botões **Nova fase** (com dificuldade), **Dica** e **Recomeçar**.
+- Botões **Nova fase** (com dificuldade), **Dica**, **Resolver** e
+  **Recomeçar**.
 - A explicação da dica e as mensagens de erro da API.
 - A tela de vitória com as estrelas.
 
-Tipos previstos: `type Amigo = Arthur | Bevi | Felipe | Gabriel | Giovanna |
-Joao | Mayara`, `type Objeto = Janela | Tomada | Porta | Estante`,
-`type Mania = PertoDeObjeto Objeto | NaCadeiraDe Objeto | SemVizinhos |
-DeFrentePara (List Amigo) | PertoDe Amigo | LadoALadoCom Amigo | LongeDe Amigo`, `type Fase = Jogando ... | Venceu Estrelas`.
+Os tipos estão em `frontend/src/Bce.elm` (#10): `type Amigo = Arthur | Bevi
+| Felipe | Gabriel | Giovanna | Joao | Mayara`, `type Objeto = Janela |
+Tomada | Porta | Estante`, `type Mania = PertoDeObjeto Objeto | NaCadeiraDe
+Objeto | SemVizinhos | DeFrentePara (List Amigo) | PertoDe Amigo |
+LadoALadoCom Amigo | LongeDe Amigo`, `type StatusMania = Respeitada |
+Violada | Pendente` e `type Rodada = Jogando | Venceu Estrelas`. A `Fase` é
+um record com a mesa, os amigos, os fixos e as manias.
 
 ## MVP
 
-4 amigos, os 7 tipos de mania acima, mesa até 3x3, e as funções gerar,
-resolver e dar dica. O resto vem depois.
+Os 7 tipos de mania e as funções gerar, resolver e dar dica estão prontos
+no Prolog e na API, com mesas de 2x3 a 3x4 e de 4 a 7 amigos (ver
+"Dificuldade"). Falta ligar a tela (#11 e #12).
 
 ## Pontos em aberto
 
-- [x] Mania da Giovanna: lado a lado com a Mayara.
-- [x] Nome do projeto: Mesa da BCE.
 - [ ] Nome do grupo.
-- [x] "Do lado da tomada" do João: **exatamente na cadeira** da tomada.
-- [x] "Perto da porta" do Arthur: **inclui** a própria cadeira da porta
-      (regra geral de "perto de um objeto", acima; no Prolog, `perto_ou_na`).
-- [x] Âncora do gerador: **amigos já sentados** (#6).
 - [ ] 🪟 janela e 📚 estante ainda não aparecem em nenhuma mania. Hoje o
       gerador põe porta, tomada e uma janela ou estante sorteada, só como
       decoração. Manter assim, ou alguém troca a mania para usá-las? Se
