@@ -161,8 +161,8 @@ resolver e dar dica. O resto vem depois.
 - [x] Mania da Giovanna: lado a lado com a Mayara.
 - [ ] Nome do projeto e nome do grupo.
 - [x] "Do lado da tomada" do João: **exatamente na cadeira** da tomada.
-- [ ] Confirmar com o Arthur: "perto da porta" inclui sentar na própria
-      cadeira da porta?
+- [x] "Perto da porta" do Arthur: **inclui** a própria cadeira da porta
+      (regra geral de "perto de um objeto", acima; no Prolog, `perto_ou_na`).
 - [ ] 🪟 janela e 📚 estante ainda não aparecem em nenhuma mania. Usar como
       decoração, ou alguém troca a mania para usá-las?
 - [ ] Âncora do gerador: amigos já sentados, manias presas a cadeiras, ou as
