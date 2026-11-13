@@ -206,10 +206,20 @@ inválidos:
 ### 6.2 Conceitos do paradigma funcional utilizados
 
 - [ ] Arquitetura Elm (Model, update, view): [onde]
-- [ ] Custom types e `case` exaustivo: [onde]
-- [ ] `Maybe` e `Result` no lugar de null e exceções: [onde]
-- [ ] Funções de ordem superior e aplicação parcial: [onde]
-- [ ] Composição (`|>`, `>>`): [onde]
+- [x] Custom types e `case` exaustivo: `Amigo` (`Bce.elm:63`), `Mania`
+  (`Bce.elm:217`), `Recusa` (`Bce.elm:276`); `case` sem `_` em
+  `nomeDoAmigo` e `recusaParaTexto`. Se alguém adicionar um amigo, o
+  compilador aponta cada `case` que precisa tratá-lo.
+- [x] `Maybe` e `Result` no lugar de null e exceções: `sentar` e `levantar`
+  devolvem `Result Recusa` (`Bce.elm:310`, `Bce.elm:331`); `amigoDeTexto`
+  devolve `Maybe Amigo` (`Bce.elm:161`); `maniaDeTexto` devolve
+  `Result String Mania` (`Bce.elm:556`).
+- [x] Funções de ordem superior e aplicação parcial: `List.filter`,
+  `List.map` e `List.concatMap` em `posicoes` (`Bce.elm:251`) e
+  `semAssento` (`Bce.elm:345`); `Result.map PertoDeObjeto`, em que o
+  construtor é usado como função (`Bce.elm:560`).
+- [x] Composição (`|>`, `>>`): `|>` em `amigoDeTexto` (`Bce.elm:161`) e em
+  `maniaDeTexto` (`Bce.elm:570`).
 - [ ] Decoders e encoders JSON: [onde]
 - [ ] Comandos e subscriptions (efeitos controlados): [onde]
 - [ ] Imutabilidade e atualização de records: [onde]
@@ -218,10 +228,43 @@ inválidos:
 ### 6.3 Trecho em destaque
 
 ```elm
-[trecho]
+maniaDeTexto : String -> List String -> Result String Mania
+maniaDeTexto tipo alvo =
+    case ( tipo, alvo ) of
+        ( "perto_de_objeto", [ objeto ] ) ->
+            objetoOuErro objeto |> Result.map PertoDeObjeto
+
+        ( "sem_vizinhos", [] ) ->
+            Ok SemVizinhos
+
+        ( "de_frente_para_algum", amigos ) ->
+            amigos
+                |> List.map amigoOuErro
+                |> combina
+                |> Result.map DeFrentePara
+
+        _ ->
+            Err ("Mania desconhecida: " ++ tipo)
+
+
+combina : List (Result e a) -> Result e (List a)
+combina =
+    List.foldr (Result.map2 (::)) (Ok [])
 ```
 
-[Explicação.]
+(`Bce.elm:556` e `Bce.elm:626`, trecho resumido; o original tem os 7 tipos.)
+
+O JSON chega como texto solto (`"longe_de"`, `["joao"]`) e precisa virar um
+`Mania`, que só admite valores válidos. O `case` olha o tipo e o alvo juntos
+(uma tupla), então `"sem_vizinhos"` só casa com lista vazia e
+`"perto_de_objeto"` só com um elemento. Qualquer combinação fora dessas cai
+no `_` e vira `Err`, em vez de um valor inválido.
+
+O ponto mais funcional é `combina`: transforma uma `List (Result e a)` em um
+`Result e (List a)` sem `if` nem laço. `foldr` percorre a lista e `Result.map2
+(::)` empilha cada resultado se todos deram `Ok`; o primeiro `Err` vence. Isso
+reaproveita as peças pequenas (`amigoOuErro`, `Result.map`) em vez de escrever
+a checagem à mão.
 
 ## 7. Integração
 
