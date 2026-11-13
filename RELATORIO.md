@@ -274,9 +274,23 @@ a checagem à mão.
   explique como Elm e Prolog se comunicam.
 -->
 
+O Elm chama o backend em FastAPI, que chama o Prolog pelo janus. O janus só
+troca inteiros, strings e listas, então o `bce_api.pl` traduz o JSON para
+os átomos e o termo `mesa/3` do `bce.pl`. Nenhuma regra do jogo fica no
+Python. O formato completo do JSON está em `docs/API.md`.
+
 | Rota / chamada | Entrada | Saída | Predicado Prolog |
 |----------------|---------|-------|------------------|
-| [`POST /api/...`] | [...] | [...] | [`...`] |
+| `POST /api/fase/nova` | `{dificuldade}` | Fase: mesa, amigos, fixos, manias | `bce_api:nova_fase/7` → `generate/4`, `mania/2` |
+| `POST /api/fase/estado` | `{fase, sentados}` | Estado: sentados, status das manias, venceu | `bce_api:estado/7` → `estado_valido/3`, `status_manias/4`, `venceu/3` |
+| `POST /api/fase/jogada` | `{fase, sentados, amigo, linha, coluna}` | Estado depois da jogada | `bce_api:jogada/10` → `jogada_valida/5` e os de `estado` |
+| `POST /api/fase/dica` | `{fase, sentados}` | `{amigo, linha, coluna, motivo}` | `bce_api:dica/7` → `hint/4` |
+| `POST /api/fase/resolver` | `{fase, sentados}` | Estado com todos sentados | `bce_api:resolver/7` → `solve/4` |
+
+Todo erro volta como HTTP 422 com uma mensagem para a tela em `detail`:
+JSON fora do formato (o Pydantic recusa antes de chamar o Prolog), estado
+impossível, jogada não permitida, fase completa, fase sem solução ou nenhuma
+jogada obrigatória.
 
 ## 8. Testes e validação
 
