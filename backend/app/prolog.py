@@ -112,6 +112,10 @@ def nova_fase(dificuldade: str) -> dict:
         "bce_api:nova_fase(D, L, C, Objetos, Amigos, Fixos, Manias)",
         {"D": dificuldade},
     )
+    # generate/4 desiste depois de 50 tentativas; é raro, mas aí a consulta
+    # falha e não há variáveis para ler.
+    if not result["truth"]:
+        raise RuntimeError(f"o gerador não achou uma fase {dificuldade!r}")
     return {
         "linhas": result["L"],
         "colunas": result["C"],

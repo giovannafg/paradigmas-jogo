@@ -6,6 +6,7 @@ códigos de status. As regras das manias são do Prolog (bce.pl).
 Rodar: `uv run pytest` (na pasta backend) ou `make test-backend` (na raiz).
 """
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -15,7 +16,7 @@ client = TestClient(app)
 # A fase de exemplo de docs/REGRAS.md (fase_exemplo/3 em bce.pl): Bevi já
 # sentado embaixo, no meio. Solução: Mayara (0,0), Arthur (0,1), João (0,2).
 # Fica escrita aqui porque /api/fase/nova sorteia uma fase diferente a cada
-# chamada.
+# chamada (generate/4).
 BEVI = {"amigo": "bevi", "linha": 1, "coluna": 1}
 FASE = {
     "mesa": {
@@ -37,33 +38,34 @@ SOLUCAO = [
 ]
 
 
-def nova_fase() -> dict:
-    return client.post("/api/fase/nova", json={"dificuldade": "facil"}).json()
-
-
 def status_de(resposta: dict) -> dict[str, str]:
     return {s["amigo"]: s["status"] for s in resposta["status"]}
 
 
-def test_nova_fase():
-    response = client.post("/api/fase/nova", json={"dificuldade": "facil"})
+# Tamanho da mesa e número de amigos de cada nível (nivel/5 em bce.pl).
+NIVEIS = {"facil": (2, 3, 4), "medio": (3, 3, 5), "dificil": (3, 4, 7)}
+
+
+@pytest.mark.parametrize("dificuldade", NIVEIS)
+def test_nova_fase(dificuldade):
+    response = client.post("/api/fase/nova", json={"dificuldade": dificuldade})
     assert response.status_code == 200
     fase = response.json()
-    assert fase["mesa"]["linhas"] == 2 and fase["mesa"]["colunas"] == 3
-    assert {"objeto": "porta", "linha": 0, "coluna": 0} in fase["mesa"]["objetos"]
-    assert sorted(fase["amigos"]) == ["arthur", "bevi", "joao", "mayara"]
-    assert fase["fixos"] == [BEVI]
+    linhas, colunas, num_amigos = NIVEIS[dificuldade]
+    assert fase["mesa"]["linhas"] == linhas
+    assert fase["mesa"]["colunas"] == colunas
+    assert len(fase["amigos"]) == num_amigos
+    assert {f["amigo"] for f in fase["fixos"]} <= set(fase["amigos"])
+    assert {m["amigo"] for m in fase["manias"]} == set(fase["amigos"])
 
 
-def test_nova_fase_traz_as_manias():
-    manias = {m["amigo"]: m for m in nova_fase()["manias"]}
-    assert manias["arthur"] == {
-        "amigo": "arthur",
-        "tipo": "perto_de_objeto",
-        "alvo": "porta",
-    }
-    assert manias["bevi"]["tipo"] == "sem_vizinhos"
-    assert manias["bevi"]["alvo"] is None
+def test_nova_fase_comeca_valida():
+    fase = client.post("/api/fase/nova", json={"dificuldade": "facil"}).json()
+    response = client.post(
+        "/api/fase/estado", json={"fase": fase, "sentados": fase["fixos"]}
+    )
+    assert response.status_code == 200
+    assert response.json()["venceu"] is False
 
 
 def test_nova_fase_rejeita_dificuldade_desconhecida():

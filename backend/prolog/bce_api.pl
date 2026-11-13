@@ -39,18 +39,19 @@
    NOVA FASE
    ========================================================================= */
 
-%!  nova_fase(+Dificuldade, -L, -C, -Objetos, -Amigos, -Fixos, -Manias) is det.
+%!  nova_fase(+Dificuldade, -L, -C, -Objetos, -Amigos, -Fixos, -Manias) is semidet.
 %
-%   Enquanto o gerador (#6) não fica pronto, toda dificuldade devolve a fase
-%   de exemplo do bce.pl. Assim o Elm já consegue jogar de ponta a ponta.
-%   Quando o #6 entrar, só esta cláusula muda; o JSON continua igual.
+%   Sorteia uma fase com o generate/4 do bce.pl. Dificuldade é a string
+%   "facil", "medio" ou "dificil"; Fixos são os amigos que já começam
+%   sentados (as âncoras do gerador).
 %
 %   Manias = [[Amigo, Tipo, Args], ...], em que Args é a lista de
 %   argumentos do termo da mania: perto_de_objeto(porta) vira
 %   [arthur, perto_de_objeto, [porta]] e sem_vizinhos vira
 %   [bevi, sem_vizinhos, []].
-nova_fase(_Dificuldade, L, C, Objetos, Amigos, Fixos, Manias) :-
-    fase_exemplo(mesa(L, C, Objetos), Amigos, Fixos),
+nova_fase(Dificuldade, L, C, Objetos, Amigos, Fixos, Manias) :-
+    atom_string(Nivel, Dificuldade),
+    generate(Nivel, mesa(L, C, Objetos), Amigos, Fixos),
     manias_da_fase(Amigos, Manias).
 
 manias_da_fase(Amigos, Manias) :-
