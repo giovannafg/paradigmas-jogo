@@ -1,6 +1,6 @@
 # Regras do jogo: Grupo de Estudo na BCE
 
-> Nome do projeto e nome do grupo: **a definir** (#1).
+> Nome do projeto: **Mesa da BCE**. Nome do grupo: **a definir** (#1).
 > Ideia proposta pela Giovanna e escolhida por todos na issue #1.
 
 ## Premissa
@@ -159,7 +159,8 @@ resolver e dar dica. O resto vem depois.
 ## Pontos em aberto
 
 - [x] Mania da Giovanna: lado a lado com a Mayara.
-- [ ] Nome do projeto e nome do grupo.
+- [x] Nome do projeto: Mesa da BCE.
+- [ ] Nome do grupo.
 - [x] "Do lado da tomada" do João: **exatamente na cadeira** da tomada.
 - [x] "Perto da porta" do Arthur: **inclui** a própria cadeira da porta
       (regra geral de "perto de um objeto", acima; no Prolog, `perto_ou_na`).

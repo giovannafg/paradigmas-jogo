@@ -21,7 +21,7 @@
     existentes), não o conteúdo. Corrija todos os ERROS apontados.
 -->
 
-# [Nome do projeto]
+# Mesa da BCE
 
 ## 1. Identificação
 
@@ -40,7 +40,7 @@
 | [Nome]        | [000000]  | [16h]           | [@usuario]     |
 | [Nome]        | [000000]  | [14h]           | [@usuario]     |
 
-- **Nome do projeto:** [o mesmo do título acima]
+- **Nome do projeto:** Mesa da BCE
 - **Nome do grupo:** [um nome criativo, que não se repita na turma]
   <!--
     O nome do grupo identifica vocês nas planilhas de notas e na chamada
