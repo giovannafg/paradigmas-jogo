@@ -314,6 +314,63 @@ deResult resultado =
 
 
 
+-- MESA DA BCE: TIPOS PARA JSON
+
+
+{-| O corpo comum das rotas de estado, dica e resolver:
+`{"fase": ..., "sentados": [...]}`.
+-}
+encodePedido : Fase -> List Lugar -> List ( String, Encode.Value )
+encodePedido fase sentados =
+    [ ( "fase", encodeFase fase )
+    , ( "sentados", Encode.list encodeLugar sentados )
+    ]
+
+
+{-| As manias ficam de fora de propósito: o servidor ignora as que receber,
+porque quem decide as manias é o Prolog (docs/API.md).
+-}
+encodeFase : Fase -> Encode.Value
+encodeFase fase =
+    Encode.object
+        [ ( "mesa"
+          , Encode.object
+                [ ( "linhas", Encode.int fase.linhas )
+                , ( "colunas", Encode.int fase.colunas )
+                , ( "objetos", Encode.list encodeObjetoNaMesa fase.objetos )
+                ]
+          )
+        , ( "amigos", Encode.list encodeAmigo fase.amigos )
+        , ( "fixos", Encode.list encodeLugar fase.fixos )
+        ]
+
+
+encodeLugar : Lugar -> Encode.Value
+encodeLugar lugar =
+    Encode.object (( "amigo", encodeAmigo lugar.amigo ) :: encodePosicao lugar.posicao)
+
+
+encodeObjetoNaMesa : ( Objeto, Posicao ) -> Encode.Value
+encodeObjetoNaMesa ( objeto, posicao ) =
+    Encode.object (( "objeto", Encode.string (Bce.objetoParaTexto objeto) ) :: encodePosicao posicao)
+
+
+{-| Devolve só os campos, e não um objeto, porque linha e coluna vão
+soltas dentro do objeto do amigo ou do objeto da mesa.
+-}
+encodePosicao : Posicao -> List ( String, Encode.Value )
+encodePosicao posicao =
+    [ ( "linha", Encode.int posicao.linha )
+    , ( "coluna", Encode.int posicao.coluna )
+    ]
+
+
+encodeAmigo : Amigo -> Encode.Value
+encodeAmigo amigo =
+    Encode.string (Bce.amigoParaTexto amigo)
+
+
+
 -- TRATAMENTO DE ERROS
 --
 -- `Http.expectJson` já existe, mas quando o servidor responde com erro (ex.:
