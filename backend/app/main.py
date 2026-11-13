@@ -263,3 +263,16 @@ def dica(request: EstadoRequest) -> DicaResponse:
         coluna=coluna,
         motivo=_mania(*motivo) if motivo else None,
     )
+
+
+@app.post("/api/fase/resolver")
+def resolver(request: EstadoRequest) -> EstadoResponse:
+    try:
+        resultado = prolog.resolver(
+            **_argumentos_da_fase(request.fase), sentados=_lugares(request.sentados)
+        )
+    except prolog.InvalidState:
+        raise HTTPException(status_code=422, detail=INVALID_STATE) from None
+    except prolog.PhaseUnsolvable:
+        raise HTTPException(status_code=422, detail=PHASE_UNSOLVABLE) from None
+    return _estado_response(resultado)

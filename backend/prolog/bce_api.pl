@@ -26,7 +26,8 @@
             estado/7,            % +L, +C, +Objetos, +Amigos, +Fixos, +Sentados, -Resultado
             jogada/10,           % +L, +C, +Objetos, +Amigos, +Fixos, +Sentados,
                                  % +Amigo, +Linha, +Coluna, -Resultado
-            dica/7               % +L, +C, +Objetos, +Amigos, +Fixos, +Sentados, -Resultado
+            dica/7,              % +L, +C, +Objetos, +Amigos, +Fixos, +Sentados, -Resultado
+            resolver/7           % +L, +C, +Objetos, +Amigos, +Fixos, +Sentados, -Resultado
           ]).
 
 :- use_module(bce).
@@ -147,6 +148,25 @@ motivo(nenhuma, []) :-
 motivo(Dono, [Dono, Tipo, Args]) :-
     mania(Dono, Mania),
     Mania =.. [Tipo | Args].
+
+
+/* =========================================================================
+   RESOLVER
+   ========================================================================= */
+
+%!  resolver(+L, +C, +Objetos, +Amigos, +Fixos, +Sentados, -Resultado) is det.
+%
+%   Resultado é `invalido`, `sem_solucao` ou [Solucao, Status, Venceu], no
+%   mesmo formato de estado/7, com todos os amigos sentados.
+resolver(L, C, Objetos0, Amigos0, Fixos0, Sentados0, Resultado) :-
+    (   valida(L, C, Objetos0, Amigos0, Fixos0, Sentados0,
+               Mesa, Amigos, Sentados)
+    ->  (   once(solve(Mesa, Amigos, Sentados, Solucao))
+        ->  resultado(Mesa, Amigos, Solucao, Resultado)
+        ;   Resultado = sem_solucao
+        )
+    ;   Resultado = invalido
+    ).
 
 
 /* =========================================================================

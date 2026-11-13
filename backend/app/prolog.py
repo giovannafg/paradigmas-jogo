@@ -130,6 +130,8 @@ def _resultado(result) -> tuple[list[Lugar], list[list[str]], bool]:
             raise InvalidState
         case "jogada_invalida":
             raise InvalidMove
+        case "sem_solucao":
+            raise PhaseUnsolvable
         case [sentados, status, venceu]:
             return sentados, status, venceu == "true"
     raise ValueError(f"resultado inesperado do bce_api: {result!r}")
@@ -219,3 +221,25 @@ def dica(
         case [amigo, linha, coluna, motivo]:
             return amigo, linha, coluna, motivo
     raise ValueError(f"resultado inesperado de dica/7: {result!r}")
+
+
+def resolver(
+    linhas: int,
+    colunas: int,
+    objetos: list[Lugar],
+    amigos: list[str],
+    fixos: list[Lugar],
+    sentados: list[Lugar],
+) -> tuple[list[Lugar], list[list[str]], bool]:
+    result = janus.query_once(
+        "bce_api:resolver(L, C, Objetos, Amigos, Fixos, Sentados, R)",
+        {
+            "L": linhas,
+            "C": colunas,
+            "Objetos": objetos,
+            "Amigos": amigos,
+            "Fixos": fixos,
+            "Sentados": sentados,
+        },
+    )
+    return _resultado(result["R"])
