@@ -95,6 +95,18 @@ class InvalidMove(Exception):
     """A jogada não é permitida no estado atual."""
 
 
+class PhaseComplete(Exception):
+    """Todos os amigos já estão sentados: não há dica para dar."""
+
+
+class PhaseUnsolvable(Exception):
+    """Não existe solução a partir de quem já está sentado."""
+
+
+class NoForcedMove(Exception):
+    """Nenhuma jogada é obrigatória: mais de uma cadeira serve."""
+
+
 def nova_fase(dificuldade: str) -> dict:
     result = janus.query_once(
         "bce_api:nova_fase(D, L, C, Objetos, Amigos, Fixos, Manias)",
@@ -172,3 +184,38 @@ def jogada(
         },
     )
     return _resultado(result["R"])
+
+
+def dica(
+    linhas: int,
+    colunas: int,
+    objetos: list[Lugar],
+    amigos: list[str],
+    fixos: list[Lugar],
+    sentados: list[Lugar],
+) -> tuple[str, int, int, list]:
+    result = janus.query_once(
+        "bce_api:dica(L, C, Objetos, Amigos, Fixos, Sentados, R)",
+        {
+            "L": linhas,
+            "C": colunas,
+            "Objetos": objetos,
+            "Amigos": amigos,
+            "Fixos": fixos,
+            "Sentados": sentados,
+        },
+    )["R"]
+    # Mesmo esquema de _resultado: cada átomo vira uma exceção e a lista
+    # vira o retorno. Motivo é [] ou [amigo, tipo, args], ver dica/7.
+    match result:
+        case "invalido":
+            raise InvalidState
+        case "completo":
+            raise PhaseComplete
+        case "sem_solucao":
+            raise PhaseUnsolvable
+        case "sem_jogada":
+            raise NoForcedMove
+        case [amigo, linha, coluna, motivo]:
+            return amigo, linha, coluna, motivo
+    raise ValueError(f"resultado inesperado de dica/7: {result!r}")

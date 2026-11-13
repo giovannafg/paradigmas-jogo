@@ -24,8 +24,9 @@
 :- module(bce_api,
           [ nova_fase/7,         % +Dificuldade, -L, -C, -Objetos, -Amigos, -Fixos, -Manias
             estado/7,            % +L, +C, +Objetos, +Amigos, +Fixos, +Sentados, -Resultado
-            jogada/10            % +L, +C, +Objetos, +Amigos, +Fixos, +Sentados,
+            jogada/10,           % +L, +C, +Objetos, +Amigos, +Fixos, +Sentados,
                                  % +Amigo, +Linha, +Coluna, -Resultado
+            dica/7               % +L, +C, +Objetos, +Amigos, +Fixos, +Sentados, -Resultado
           ]).
 
 :- use_module(bce).
@@ -69,10 +70,8 @@ manias_da_fase(Amigos, Manias) :-
 %   Resultado é o átomo `invalido` ou a lista [Sentados, Status, Venceu],
 %   com Venceu = true/false. Sentados inclui os fixos.
 estado(L, C, Objetos0, Amigos0, Fixos0, Sentados0, Resultado) :-
-    (   traduz(L, C, Objetos0, Amigos0, Fixos0, Sentados0,
-               Mesa, Amigos, Fixos, Sentados),
-        estado_valido(Mesa, Amigos, Sentados),
-        fixos_no_lugar(Fixos, Sentados)
+    (   valida(L, C, Objetos0, Amigos0, Fixos0, Sentados0,
+               Mesa, Amigos, Sentados)
     ->  resultado(Mesa, Amigos, Sentados, Resultado)
     ;   Resultado = invalido
     ).
@@ -104,9 +103,50 @@ resultado(Mesa, Amigos, Sentados, [Sentados, Status, Venceu]) :-
     ;   Venceu = false
     ).
 
+%   Traduz o JSON e confere se o estado pode existir. Usado por todas as
+%   rotas que recebem um estado, para elas recusarem os mesmos casos.
+valida(L, C, Objetos0, Amigos0, Fixos0, Sentados0, Mesa, Amigos, Sentados) :-
+    traduz(L, C, Objetos0, Amigos0, Fixos0, Sentados0,
+           Mesa, Amigos, Fixos, Sentados),
+    estado_valido(Mesa, Amigos, Sentados),
+    fixos_no_lugar(Fixos, Sentados).
+
 %   Cada fixo tem que estar em Sentados, na mesma cadeira.
 fixos_no_lugar(Fixos, Sentados) :-
     forall(member(Fixo, Fixos), memberchk(Fixo, Sentados)).
+
+
+/* =========================================================================
+   DICA
+   ========================================================================= */
+
+%!  dica(+L, +C, +Objetos, +Amigos, +Fixos, +Sentados, -Resultado) is det.
+%
+%   Resultado é um dos átomos `invalido`, `completo`, `sem_solucao` e
+%   `sem_jogada` (hint/4 falhou: nenhuma jogada é obrigatória), ou a lista
+%   [Amigo, Linha, Coluna, Motivo]. Motivo é a mania que força a jogada, no
+%   formato [Amigo, Tipo, Args] de nova_fase/7, ou [] quando só a mesa a
+%   força.
+dica(L, C, Objetos0, Amigos0, Fixos0, Sentados0, Resultado) :-
+    (   valida(L, C, Objetos0, Amigos0, Fixos0, Sentados0,
+               Mesa, Amigos, Sentados)
+    ->  (   hint(Mesa, Amigos, Sentados, Dica)
+        ->  dica_resultado(Dica, Resultado)
+        ;   Resultado = sem_jogada
+        )
+    ;   Resultado = invalido
+    ).
+
+dica_resultado([completo], completo).
+dica_resultado([sem_solucao], sem_solucao).
+dica_resultado([sentar, Amigo, L, C, Dono], [Amigo, L, C, Motivo]) :-
+    motivo(Dono, Motivo).
+
+motivo(nenhuma, []) :-
+    !.
+motivo(Dono, [Dono, Tipo, Args]) :-
+    mania(Dono, Mania),
+    Mania =.. [Tipo | Args].
 
 
 /* =========================================================================
