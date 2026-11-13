@@ -99,8 +99,8 @@ só com as manias acima, e **nenhuma tem solução única**. As manias são
 simétricas: espelhar a mesa ou trocar dois amigos de lugar quase sempre gera
 outra solução válida. Para que a solução seja única, o gerador precisa de
 pelo menos uma "âncora", como acontece no Sudoku com os números iniciais.
-Pode ser um amigo já sentado ou uma mania presa a uma cadeira específica
-(ex.: "precisa da cadeira da janela").
+O gerador (#6) usa **amigos já sentados**: fixa amigos da solução até ela
+ficar única e depois tira os que não fazem falta.
 
 ## Exemplo de fase (mesa 2x3)
 
@@ -164,9 +164,12 @@ resolver e dar dica. O resto vem depois.
 - [x] "Do lado da tomada" do João: **exatamente na cadeira** da tomada.
 - [x] "Perto da porta" do Arthur: **inclui** a própria cadeira da porta
       (regra geral de "perto de um objeto", acima; no Prolog, `perto_ou_na`).
-- [ ] 🪟 janela e 📚 estante ainda não aparecem em nenhuma mania. Usar como
-      decoração, ou alguém troca a mania para usá-las?
-- [ ] Âncora do gerador: amigos já sentados, manias presas a cadeiras, ou as
-      duas coisas.
+- [x] Âncora do gerador: **amigos já sentados** (#6).
+- [ ] 🪟 janela e 📚 estante ainda não aparecem em nenhuma mania. Hoje o
+      gerador põe porta, tomada e uma janela ou estante sorteada, só como
+      decoração. Manter assim, ou alguém troca a mania para usá-las? Se
+      trocar, muda o `mania/2` no `bce.pl` e os testes do Prolog; a API e o
+      Elm continuam iguais.
 - [ ] Regra das estrelas: contar só dicas, ou também jogadas que deixam
-      alguma mania ❌?
+      alguma mania ❌? Hoje o `estrelasPorDicas` do `Bce.elm` (#10) conta só
+      dicas, como na proposta da regra 5.
