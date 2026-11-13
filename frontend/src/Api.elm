@@ -1,5 +1,6 @@
 module Api exposing
     ( Difficulty(..)
+    , Estado
     , Hint
     , difficultyLabel
     , generate
@@ -20,6 +21,7 @@ requisições para o backend em <http://localhost:8000> (veja vite.config.js).
 
 -}
 
+import Bce exposing (Amigo, Dica, Fase, Lugar, Objeto, Posicao, Regra, StatusMania(..))
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
@@ -141,6 +143,174 @@ hintDecoder =
         (Decode.field "row" Decode.int)
         (Decode.field "col" Decode.int)
         (Decode.field "value" Decode.int)
+
+
+
+-- MESA DA BCE: JSON PARA OS TIPOS DO Bce.elm
+--
+-- O formato do JSON está em docs/API.md. Cada decoder FALHA quando recebe um
+-- valor que não existe no jogo (amigo, objeto, mania ou status desconhecido),
+-- em vez de aceitar um dado inválido: assim um erro no servidor aparece logo
+-- aqui, e não lá na tela.
+
+
+{-| O que muda a cada jogada, como as rotas de estado, jogada e resolver
+devolvem. `sentados` inclui os fixos.
+-}
+type alias Estado =
+    { sentados : List Lugar
+    , status : List ( Amigo, StatusMania )
+    , venceu : Bool
+    }
+
+
+{-| `{"mesa": {...}, "amigos": [...], "fixos": [...], "manias": [...]}`.
+O JSON aninha o tamanho da mesa em `mesa`; `Decode.at` lê o caminho inteiro.
+-}
+faseDecoder : Decoder Fase
+faseDecoder =
+    Decode.map6 Fase
+        (Decode.at [ "mesa", "linhas" ] Decode.int)
+        (Decode.at [ "mesa", "colunas" ] Decode.int)
+        (Decode.at [ "mesa", "objetos" ] (Decode.list objetoNaMesaDecoder))
+        (Decode.field "amigos" (Decode.list amigoDecoder))
+        (Decode.field "fixos" (Decode.list lugarDecoder))
+        (Decode.field "manias" (Decode.list regraDecoder))
+
+
+estadoDecoder : Decoder Estado
+estadoDecoder =
+    Decode.map3 Estado
+        (Decode.field "sentados" (Decode.list lugarDecoder))
+        (Decode.field "status" (Decode.list statusDoAmigoDecoder))
+        (Decode.field "venceu" Decode.bool)
+
+
+{-| `motivo` é `null` quando a cadeira sobra só por eliminação;
+`Decode.nullable` transforma isso em `Nothing`.
+-}
+dicaDecoder : Decoder Dica
+dicaDecoder =
+    Decode.map3 Dica
+        (Decode.field "amigo" amigoDecoder)
+        posicaoDecoder
+        (Decode.field "motivo" (Decode.nullable regraDecoder))
+
+
+{-| Linha e coluna vêm soltas no mesmo objeto do amigo ou do objeto, então
+este decoder lê os dois campos do objeto atual.
+-}
+posicaoDecoder : Decoder Posicao
+posicaoDecoder =
+    Decode.map2 Posicao
+        (Decode.field "linha" Decode.int)
+        (Decode.field "coluna" Decode.int)
+
+
+lugarDecoder : Decoder Lugar
+lugarDecoder =
+    Decode.map2 Lugar
+        (Decode.field "amigo" amigoDecoder)
+        posicaoDecoder
+
+
+objetoNaMesaDecoder : Decoder ( Objeto, Posicao )
+objetoNaMesaDecoder =
+    Decode.map2 Tuple.pair
+        (Decode.field "objeto" objetoDecoder)
+        posicaoDecoder
+
+
+{-| Primeiro lê os três campos; depois `Decode.andThen` olha o resultado e
+decide se a mania existe. `Bce.maniaDeTexto` é quem sabe a resposta.
+-}
+regraDecoder : Decoder Regra
+regraDecoder =
+    Decode.map3 (\dono tipo alvo -> ( dono, tipo, alvo ))
+        (Decode.field "amigo" amigoDecoder)
+        (Decode.field "tipo" Decode.string)
+        (Decode.field "alvo" alvoDecoder)
+        |> Decode.andThen
+            (\( dono, tipo, alvo ) ->
+                Bce.maniaDeTexto tipo alvo
+                    |> Result.map (Regra dono)
+                    |> deResult
+            )
+
+
+{-| O `alvo` chega como `null`, como um texto (`"porta"`) ou como uma lista
+(`["arthur", "joao"]`). `Decode.oneOf` tenta cada forma e as três viram a
+lista de textos que `Bce.maniaDeTexto` espera.
+-}
+alvoDecoder : Decoder (List String)
+alvoDecoder =
+    Decode.oneOf
+        [ Decode.null []
+        , Decode.map List.singleton Decode.string
+        , Decode.list Decode.string
+        ]
+
+
+statusDoAmigoDecoder : Decoder ( Amigo, StatusMania )
+statusDoAmigoDecoder =
+    Decode.map2 Tuple.pair
+        (Decode.field "amigo" amigoDecoder)
+        (Decode.field "status" statusDecoder)
+
+
+statusDecoder : Decoder StatusMania
+statusDecoder =
+    Decode.string
+        |> Decode.andThen
+            (\texto ->
+                case texto of
+                    "ok" ->
+                        Decode.succeed Respeitada
+
+                    "violada" ->
+                        Decode.succeed Violada
+
+                    "pendente" ->
+                        Decode.succeed Pendente
+
+                    _ ->
+                        Decode.fail ("Status desconhecido: " ++ texto)
+            )
+
+
+amigoDecoder : Decoder Amigo
+amigoDecoder =
+    Decode.string
+        |> Decode.andThen
+            (\texto ->
+                Bce.amigoDeTexto texto
+                    |> Result.fromMaybe ("Amigo desconhecido: " ++ texto)
+                    |> deResult
+            )
+
+
+objetoDecoder : Decoder Objeto
+objetoDecoder =
+    Decode.string
+        |> Decode.andThen
+            (\texto ->
+                Bce.objetoDeTexto texto
+                    |> Result.fromMaybe ("Objeto desconhecido: " ++ texto)
+                    |> deResult
+            )
+
+
+{-| Transforma um `Result` num decoder: `Ok` vira sucesso e `Err` faz a
+decodificação inteira falhar com aquela mensagem.
+-}
+deResult : Result String a -> Decoder a
+deResult resultado =
+    case resultado of
+        Ok valor ->
+            Decode.succeed valor
+
+        Err erro ->
+            Decode.fail erro
 
 
 
