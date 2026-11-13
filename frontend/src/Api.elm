@@ -1,10 +1,17 @@
 module Api exposing
     ( Difficulty(..)
+    , Dificuldade(..)
     , Estado
     , Hint
+    , dica
     , difficultyLabel
+    , dificuldadeLabel
+    , estado
     , generate
     , hint
+    , jogada
+    , novaFase
+    , resolver
     , solve
     )
 
@@ -18,6 +25,9 @@ ele chama nosso `update` com a mensagem que indicamos (por exemplo,
 
 As URLs começam com `/api/...`. Em desenvolvimento, o Vite repassa essas
 requisições para o backend em <http://localhost:8000> (veja vite.config.js).
+
+As funções da Mesa da BCE usam as rotas `/api/fase/*` descritas em
+docs/API.md e os tipos do módulo `Bce`.
 
 -}
 
@@ -143,6 +153,98 @@ hintDecoder =
         (Decode.field "row" Decode.int)
         (Decode.field "col" Decode.int)
         (Decode.field "value" Decode.int)
+
+
+
+-- MESA DA BCE: REQUISIÇÕES
+--
+-- Como as do Sudoku, todas recebem `toMsg` e entregam um `Result String a`:
+-- em caso de erro, a mensagem já vem pronta para a tela.
+
+
+type Dificuldade
+    = Facil
+    | Medio
+    | Dificil
+
+
+dificuldadeLabel : Dificuldade -> String
+dificuldadeLabel dificuldade =
+    case dificuldade of
+        Facil ->
+            "Fácil"
+
+        Medio ->
+            "Médio"
+
+        Dificil ->
+            "Difícil"
+
+
+{-| Nome usado pela API (e pelo Prolog: são os átomos facil/medio/dificil).
+-}
+dificuldadeParaTexto : Dificuldade -> String
+dificuldadeParaTexto dificuldade =
+    case dificuldade of
+        Facil ->
+            "facil"
+
+        Medio ->
+            "medio"
+
+        Dificil ->
+            "dificil"
+
+
+{-| Sorteia uma fase nova com solução única.
+-}
+novaFase : Dificuldade -> (Result String Fase -> msg) -> Cmd msg
+novaFase dificuldade toMsg =
+    postBce "/api/fase/nova"
+        [ ( "dificuldade", Encode.string (dificuldadeParaTexto dificuldade) ) ]
+        faseDecoder
+        toMsg
+
+
+{-| O status das manias para quem está sentado. Serve para o começo da fase
+e para quando o jogador levanta um amigo.
+-}
+estado : Fase -> List Lugar -> (Result String Estado -> msg) -> Cmd msg
+estado fase sentados toMsg =
+    postBce "/api/fase/estado" (encodePedido fase sentados) estadoDecoder toMsg
+
+
+{-| Senta `lugar.amigo` em `lugar.posicao` e devolve o estado depois disso.
+-}
+jogada : Fase -> List Lugar -> Lugar -> (Result String Estado -> msg) -> Cmd msg
+jogada fase sentados lugar toMsg =
+    postBce "/api/fase/jogada"
+        (encodePedido fase sentados ++ camposDoLugar lugar)
+        estadoDecoder
+        toMsg
+
+
+dica : Fase -> List Lugar -> (Result String Dica -> msg) -> Cmd msg
+dica fase sentados toMsg =
+    postBce "/api/fase/dica" (encodePedido fase sentados) dicaDecoder toMsg
+
+
+{-| O estado com todo mundo sentado, a partir de quem já está sentado.
+-}
+resolver : Fase -> List Lugar -> (Result String Estado -> msg) -> Cmd msg
+resolver fase sentados toMsg =
+    postBce "/api/fase/resolver" (encodePedido fase sentados) estadoDecoder toMsg
+
+
+{-| Todas as rotas da BCE são `POST` com um objeto JSON no corpo.
+-}
+postBce : String -> List ( String, Encode.Value ) -> Decoder a -> (Result String a -> msg) -> Cmd msg
+postBce url campos decoder toMsg =
+    Http.post
+        { url = url
+        , body = Http.jsonBody (Encode.object campos)
+        , expect = expectJson toMsg decoder
+        }
 
 
 
@@ -347,7 +449,15 @@ encodeFase fase =
 
 encodeLugar : Lugar -> Encode.Value
 encodeLugar lugar =
-    Encode.object (( "amigo", encodeAmigo lugar.amigo ) :: encodePosicao lugar.posicao)
+    Encode.object (camposDoLugar lugar)
+
+
+{-| `amigo`, `linha` e `coluna`. A rota de jogada usa estes mesmos campos
+soltos no corpo do pedido, ao lado de `fase` e `sentados`.
+-}
+camposDoLugar : Lugar -> List ( String, Encode.Value )
+camposDoLugar lugar =
+    ( "amigo", encodeAmigo lugar.amigo ) :: encodePosicao lugar.posicao
 
 
 encodeObjetoNaMesa : ( Objeto, Posicao ) -> Encode.Value
