@@ -511,12 +511,23 @@ expectJson toMsg decoder =
                     Err "Não foi possível falar com o servidor. O backend está rodando?"
 
 
-{-| Tenta extrair o campo `detail` (quando ele é uma string). Se não der,
-monta uma mensagem genérica com o código HTTP.
+{-| Tenta extrair o campo `detail`. Quando ele é uma string, é a mensagem
+que o backend escreveu para a tela. Quando é uma lista, foi o FastAPI que
+recusou o formato do JSON antes de chamar o Prolog: a lista explica o erro
+para quem programa, não para quem joga. Se não der, monta uma mensagem
+genérica com o código HTTP.
 -}
 errorDetail : Int -> String -> String
 errorDetail status body =
-    case Decode.decodeString (Decode.field "detail" Decode.string) body of
+    let
+        detailDecoder =
+            Decode.oneOf
+                [ Decode.string
+                , Decode.list Decode.value
+                    |> Decode.map (\_ -> "O jogo mandou dados fora do formato para o servidor.")
+                ]
+    in
+    case Decode.decodeString (Decode.field "detail" detailDecoder) body of
         Ok detail ->
             detail
 
