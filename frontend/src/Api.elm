@@ -4,9 +4,14 @@ module Api exposing
     , Estado
     , Hint
     , dica
+    , dicaDecoder
     , difficultyLabel
     , dificuldadeLabel
+    , encodePedido
+    , errorDetail
     , estado
+    , estadoDecoder
+    , faseDecoder
     , generate
     , hint
     , jogada
@@ -28,6 +33,10 @@ requisições para o backend em <http://localhost:8000> (veja vite.config.js).
 
 As funções da Mesa da BCE usam as rotas `/api/fase/*` descritas em
 docs/API.md e os tipos do módulo `Bce`.
+
+`faseDecoder`, `estadoDecoder`, `dicaDecoder`, `encodePedido` e
+`errorDetail` são expostos só para os testes em tests/ApiTest.elm. A tela
+usa as requisições, que já aplicam cada um deles.
 
 -}
 
