@@ -1,4 +1,4 @@
-# Regras do jogo: Grupo de Estudo na BCE
+# Regras do jogo: Mesa da BCE
 
 > Nome do projeto: **Mesa da BCE**. Nome do grupo: **a definir** (#1).
 > Ideia proposta pela Giovanna e escolhida por todos na issue #1.
