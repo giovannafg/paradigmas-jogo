@@ -1,9 +1,22 @@
 module Api exposing
     ( Difficulty(..)
+    , Dificuldade(..)
+    , Estado
     , Hint
+    , dica
+    , dicaDecoder
     , difficultyLabel
+    , dificuldadeLabel
+    , encodePedido
+    , errorDetail
+    , estado
+    , estadoDecoder
+    , faseDecoder
     , generate
     , hint
+    , jogada
+    , novaFase
+    , resolver
     , solve
     )
 
@@ -18,8 +31,16 @@ ele chama nosso `update` com a mensagem que indicamos (por exemplo,
 As URLs começam com `/api/...`. Em desenvolvimento, o Vite repassa essas
 requisições para o backend em <http://localhost:8000> (veja vite.config.js).
 
+As funções da Mesa da BCE usam as rotas `/api/fase/*` descritas em
+docs/API.md e os tipos do módulo `Bce`.
+
+`faseDecoder`, `estadoDecoder`, `dicaDecoder`, `encodePedido` e
+`errorDetail` são expostos só para os testes em tests/ApiTest.elm. A tela
+usa as requisições, que já aplicam cada um deles.
+
 -}
 
+import Bce exposing (Amigo, Dica, Fase, Lugar, Objeto, Posicao, Regra, StatusMania(..))
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
@@ -144,6 +165,331 @@ hintDecoder =
 
 
 
+-- MESA DA BCE: REQUISIÇÕES
+--
+-- Como as do Sudoku, todas recebem `toMsg` e entregam um `Result String a`:
+-- em caso de erro, a mensagem já vem pronta para a tela.
+
+
+type Dificuldade
+    = Facil
+    | Medio
+    | Dificil
+
+
+dificuldadeLabel : Dificuldade -> String
+dificuldadeLabel dificuldade =
+    case dificuldade of
+        Facil ->
+            "Fácil"
+
+        Medio ->
+            "Médio"
+
+        Dificil ->
+            "Difícil"
+
+
+{-| Nome usado pela API (e pelo Prolog: são os átomos facil/medio/dificil).
+-}
+dificuldadeParaTexto : Dificuldade -> String
+dificuldadeParaTexto dificuldade =
+    case dificuldade of
+        Facil ->
+            "facil"
+
+        Medio ->
+            "medio"
+
+        Dificil ->
+            "dificil"
+
+
+{-| Sorteia uma fase nova com solução única.
+-}
+novaFase : Dificuldade -> (Result String Fase -> msg) -> Cmd msg
+novaFase dificuldade toMsg =
+    postBce "/api/fase/nova"
+        [ ( "dificuldade", Encode.string (dificuldadeParaTexto dificuldade) ) ]
+        faseDecoder
+        toMsg
+
+
+{-| O status das manias para quem está sentado. Serve para o começo da fase
+e para quando o jogador levanta um amigo.
+-}
+estado : Fase -> List Lugar -> (Result String Estado -> msg) -> Cmd msg
+estado fase sentados toMsg =
+    postBce "/api/fase/estado" (encodePedido fase sentados) estadoDecoder toMsg
+
+
+{-| Senta `lugar.amigo` em `lugar.posicao` e devolve o estado depois disso.
+-}
+jogada : Fase -> List Lugar -> Lugar -> (Result String Estado -> msg) -> Cmd msg
+jogada fase sentados lugar toMsg =
+    postBce "/api/fase/jogada"
+        (encodePedido fase sentados ++ camposDoLugar lugar)
+        estadoDecoder
+        toMsg
+
+
+dica : Fase -> List Lugar -> (Result String Dica -> msg) -> Cmd msg
+dica fase sentados toMsg =
+    postBce "/api/fase/dica" (encodePedido fase sentados) dicaDecoder toMsg
+
+
+{-| O estado com todo mundo sentado, a partir de quem já está sentado.
+-}
+resolver : Fase -> List Lugar -> (Result String Estado -> msg) -> Cmd msg
+resolver fase sentados toMsg =
+    postBce "/api/fase/resolver" (encodePedido fase sentados) estadoDecoder toMsg
+
+
+{-| Todas as rotas da BCE são `POST` com um objeto JSON no corpo.
+-}
+postBce : String -> List ( String, Encode.Value ) -> Decoder a -> (Result String a -> msg) -> Cmd msg
+postBce url campos decoder toMsg =
+    Http.post
+        { url = url
+        , body = Http.jsonBody (Encode.object campos)
+        , expect = expectJson toMsg decoder
+        }
+
+
+
+-- MESA DA BCE: JSON PARA OS TIPOS DO Bce.elm
+--
+-- O formato do JSON está em docs/API.md. Cada decoder FALHA quando recebe um
+-- valor que não existe no jogo (amigo, objeto, mania ou status desconhecido),
+-- em vez de aceitar um dado inválido: assim um erro no servidor aparece logo
+-- aqui, e não lá na tela.
+
+
+{-| O que muda a cada jogada, como as rotas de estado, jogada e resolver
+devolvem. `sentados` inclui os fixos.
+-}
+type alias Estado =
+    { sentados : List Lugar
+    , status : List ( Amigo, StatusMania )
+    , venceu : Bool
+    }
+
+
+{-| `{"mesa": {...}, "amigos": [...], "fixos": [...], "manias": [...]}`.
+O JSON aninha o tamanho da mesa em `mesa`; `Decode.at` lê o caminho inteiro.
+-}
+faseDecoder : Decoder Fase
+faseDecoder =
+    Decode.map6 Fase
+        (Decode.at [ "mesa", "linhas" ] Decode.int)
+        (Decode.at [ "mesa", "colunas" ] Decode.int)
+        (Decode.at [ "mesa", "objetos" ] (Decode.list objetoNaMesaDecoder))
+        (Decode.field "amigos" (Decode.list amigoDecoder))
+        (Decode.field "fixos" (Decode.list lugarDecoder))
+        (Decode.field "manias" (Decode.list regraDecoder))
+
+
+estadoDecoder : Decoder Estado
+estadoDecoder =
+    Decode.map3 Estado
+        (Decode.field "sentados" (Decode.list lugarDecoder))
+        (Decode.field "status" (Decode.list statusDoAmigoDecoder))
+        (Decode.field "venceu" Decode.bool)
+
+
+{-| `motivo` é `null` quando a cadeira sobra só por eliminação;
+`Decode.nullable` transforma isso em `Nothing`.
+-}
+dicaDecoder : Decoder Dica
+dicaDecoder =
+    Decode.map3 Dica
+        (Decode.field "amigo" amigoDecoder)
+        posicaoDecoder
+        (Decode.field "motivo" (Decode.nullable regraDecoder))
+
+
+{-| Linha e coluna vêm soltas no mesmo objeto do amigo ou do objeto, então
+este decoder lê os dois campos do objeto atual.
+-}
+posicaoDecoder : Decoder Posicao
+posicaoDecoder =
+    Decode.map2 Posicao
+        (Decode.field "linha" Decode.int)
+        (Decode.field "coluna" Decode.int)
+
+
+lugarDecoder : Decoder Lugar
+lugarDecoder =
+    Decode.map2 Lugar
+        (Decode.field "amigo" amigoDecoder)
+        posicaoDecoder
+
+
+objetoNaMesaDecoder : Decoder ( Objeto, Posicao )
+objetoNaMesaDecoder =
+    Decode.map2 Tuple.pair
+        (Decode.field "objeto" objetoDecoder)
+        posicaoDecoder
+
+
+{-| Primeiro lê os três campos; depois `Decode.andThen` olha o resultado e
+decide se a mania existe. `Bce.maniaDeTexto` é quem sabe a resposta.
+-}
+regraDecoder : Decoder Regra
+regraDecoder =
+    Decode.map3 (\dono tipo alvo -> ( dono, tipo, alvo ))
+        (Decode.field "amigo" amigoDecoder)
+        (Decode.field "tipo" Decode.string)
+        (Decode.field "alvo" alvoDecoder)
+        |> Decode.andThen
+            (\( dono, tipo, alvo ) ->
+                Bce.maniaDeTexto tipo alvo
+                    |> Result.map (Regra dono)
+                    |> deResult
+            )
+
+
+{-| O `alvo` chega como `null`, como um texto (`"porta"`) ou como uma lista
+(`["arthur", "joao"]`). `Decode.oneOf` tenta cada forma e as três viram a
+lista de textos que `Bce.maniaDeTexto` espera.
+-}
+alvoDecoder : Decoder (List String)
+alvoDecoder =
+    Decode.oneOf
+        [ Decode.null []
+        , Decode.map List.singleton Decode.string
+        , Decode.list Decode.string
+        ]
+
+
+statusDoAmigoDecoder : Decoder ( Amigo, StatusMania )
+statusDoAmigoDecoder =
+    Decode.map2 Tuple.pair
+        (Decode.field "amigo" amigoDecoder)
+        (Decode.field "status" statusDecoder)
+
+
+statusDecoder : Decoder StatusMania
+statusDecoder =
+    Decode.string
+        |> Decode.andThen
+            (\texto ->
+                case texto of
+                    "ok" ->
+                        Decode.succeed Respeitada
+
+                    "violada" ->
+                        Decode.succeed Violada
+
+                    "pendente" ->
+                        Decode.succeed Pendente
+
+                    _ ->
+                        Decode.fail ("Status desconhecido: " ++ texto)
+            )
+
+
+amigoDecoder : Decoder Amigo
+amigoDecoder =
+    Decode.string
+        |> Decode.andThen
+            (\texto ->
+                Bce.amigoDeTexto texto
+                    |> Result.fromMaybe ("Amigo desconhecido: " ++ texto)
+                    |> deResult
+            )
+
+
+objetoDecoder : Decoder Objeto
+objetoDecoder =
+    Decode.string
+        |> Decode.andThen
+            (\texto ->
+                Bce.objetoDeTexto texto
+                    |> Result.fromMaybe ("Objeto desconhecido: " ++ texto)
+                    |> deResult
+            )
+
+
+{-| Transforma um `Result` num decoder: `Ok` vira sucesso e `Err` faz a
+decodificação inteira falhar com aquela mensagem.
+-}
+deResult : Result String a -> Decoder a
+deResult resultado =
+    case resultado of
+        Ok valor ->
+            Decode.succeed valor
+
+        Err erro ->
+            Decode.fail erro
+
+
+
+-- MESA DA BCE: TIPOS PARA JSON
+
+
+{-| O corpo comum das rotas de estado, dica e resolver:
+`{"fase": ..., "sentados": [...]}`.
+-}
+encodePedido : Fase -> List Lugar -> List ( String, Encode.Value )
+encodePedido fase sentados =
+    [ ( "fase", encodeFase fase )
+    , ( "sentados", Encode.list encodeLugar sentados )
+    ]
+
+
+{-| As manias ficam de fora de propósito: o servidor ignora as que receber,
+porque quem decide as manias é o Prolog (docs/API.md).
+-}
+encodeFase : Fase -> Encode.Value
+encodeFase fase =
+    Encode.object
+        [ ( "mesa"
+          , Encode.object
+                [ ( "linhas", Encode.int fase.linhas )
+                , ( "colunas", Encode.int fase.colunas )
+                , ( "objetos", Encode.list encodeObjetoNaMesa fase.objetos )
+                ]
+          )
+        , ( "amigos", Encode.list encodeAmigo fase.amigos )
+        , ( "fixos", Encode.list encodeLugar fase.fixos )
+        ]
+
+
+encodeLugar : Lugar -> Encode.Value
+encodeLugar lugar =
+    Encode.object (camposDoLugar lugar)
+
+
+{-| `amigo`, `linha` e `coluna`. A rota de jogada usa estes mesmos campos
+soltos no corpo do pedido, ao lado de `fase` e `sentados`.
+-}
+camposDoLugar : Lugar -> List ( String, Encode.Value )
+camposDoLugar lugar =
+    ( "amigo", encodeAmigo lugar.amigo ) :: encodePosicao lugar.posicao
+
+
+encodeObjetoNaMesa : ( Objeto, Posicao ) -> Encode.Value
+encodeObjetoNaMesa ( objeto, posicao ) =
+    Encode.object (( "objeto", Encode.string (Bce.objetoParaTexto objeto) ) :: encodePosicao posicao)
+
+
+{-| Devolve só os campos, e não um objeto, porque linha e coluna vão
+soltas dentro do objeto do amigo ou do objeto da mesa.
+-}
+encodePosicao : Posicao -> List ( String, Encode.Value )
+encodePosicao posicao =
+    [ ( "linha", Encode.int posicao.linha )
+    , ( "coluna", Encode.int posicao.coluna )
+    ]
+
+
+encodeAmigo : Amigo -> Encode.Value
+encodeAmigo amigo =
+    Encode.string (Bce.amigoParaTexto amigo)
+
+
+
 -- TRATAMENTO DE ERROS
 --
 -- `Http.expectJson` já existe, mas quando o servidor responde com erro (ex.:
@@ -174,12 +520,23 @@ expectJson toMsg decoder =
                     Err "Não foi possível falar com o servidor. O backend está rodando?"
 
 
-{-| Tenta extrair o campo `detail` (quando ele é uma string). Se não der,
-monta uma mensagem genérica com o código HTTP.
+{-| Tenta extrair o campo `detail`. Quando ele é uma string, é a mensagem
+que o backend escreveu para a tela. Quando é uma lista, foi o FastAPI que
+recusou o formato do JSON antes de chamar o Prolog: a lista explica o erro
+para quem programa, não para quem joga. Se não der, monta uma mensagem
+genérica com o código HTTP.
 -}
 errorDetail : Int -> String -> String
 errorDetail status body =
-    case Decode.decodeString (Decode.field "detail" Decode.string) body of
+    let
+        detailDecoder =
+            Decode.oneOf
+                [ Decode.string
+                , Decode.list Decode.value
+                    |> Decode.map (\_ -> "O jogo mandou dados fora do formato para o servidor.")
+                ]
+    in
+    case Decode.decodeString (Decode.field "detail" detailDecoder) body of
         Ok detail ->
             detail
 

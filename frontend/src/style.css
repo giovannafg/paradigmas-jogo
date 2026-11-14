@@ -791,3 +791,118 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Mesa da BCE */
+@layer components {
+  .bce-layout,
+  .bce-partida {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .bce-layout h2 {
+    font-size: 1.25rem;
+    font-weight: 650;
+    margin-block-end: 0.5rem;
+  }
+
+  .bce-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .bce-amigos {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .bce-instrucao {
+    margin-block-end: 0.75rem;
+  }
+
+  .bce-card,
+  .bce-cadeira {
+    display: grid;
+    gap: 0.2rem;
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-box);
+    background: var(--color-base-100);
+    padding: 0.65rem;
+    overflow-wrap: anywhere;
+  }
+
+  .bce-card {
+    text-align: start;
+  }
+
+  .bce-nome {
+    font-weight: 650;
+  }
+
+  .bce-mania {
+    font-size: 0.875rem;
+  }
+
+  .bce-mesa {
+    display: grid;
+    grid-template-columns: repeat(var(--bce-colunas), minmax(0, 1fr));
+    gap: 0.35rem;
+    padding: 0.5rem;
+    border-radius: var(--radius-box);
+    background: var(--color-base-300);
+  }
+
+  .bce-cadeira {
+    min-height: 4.5rem;
+    align-content: center;
+    font-size: 0.875rem;
+  }
+
+  .bce-fixo {
+    background: var(--color-base-200);
+  }
+
+  .bce-selecionado {
+    border-color: var(--color-primary);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+  }
+
+  .bce-conflito {
+    border-color: var(--color-error);
+  }
+
+  .bce-destaque {
+    outline: 2px dashed var(--color-accent);
+    outline-offset: -3px;
+  }
+
+  .theme-toggle > .theme-controller {
+    display: block;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+
+  .theme-toggle:has(> .theme-controller:focus-visible) {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .bce-layout button:enabled {
+    cursor: pointer;
+  }
+
+  .bce-layout button:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  @media (min-width: 48rem) {
+    .bce-partida {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      align-items: start;
+    }
+  }
+}

@@ -95,11 +95,27 @@ class InvalidMove(Exception):
     """A jogada não é permitida no estado atual."""
 
 
+class PhaseComplete(Exception):
+    """Todos os amigos já estão sentados: não há dica para dar."""
+
+
+class PhaseUnsolvable(Exception):
+    """Não existe solução a partir de quem já está sentado."""
+
+
+class NoForcedMove(Exception):
+    """Nenhuma jogada é obrigatória: mais de uma cadeira serve."""
+
+
 def nova_fase(dificuldade: str) -> dict:
     result = janus.query_once(
         "bce_api:nova_fase(D, L, C, Objetos, Amigos, Fixos, Manias)",
         {"D": dificuldade},
     )
+    # generate/4 desiste depois de 50 tentativas; é raro, mas aí a consulta
+    # falha e não há variáveis para ler.
+    if not result["truth"]:
+        raise RuntimeError(f"o gerador não achou uma fase {dificuldade!r}")
     return {
         "linhas": result["L"],
         "colunas": result["C"],
@@ -118,6 +134,8 @@ def _resultado(result) -> tuple[list[Lugar], list[list[str]], bool]:
             raise InvalidState
         case "jogada_invalida":
             raise InvalidMove
+        case "sem_solucao":
+            raise PhaseUnsolvable
         case [sentados, status, venceu]:
             return sentados, status, venceu == "true"
     raise ValueError(f"resultado inesperado do bce_api: {result!r}")
@@ -169,6 +187,63 @@ def jogada(
             "Amigo": amigo,
             "Linha": linha,
             "Coluna": coluna,
+        },
+    )
+    return _resultado(result["R"])
+
+
+def dica(
+    linhas: int,
+    colunas: int,
+    objetos: list[Lugar],
+    amigos: list[str],
+    fixos: list[Lugar],
+    sentados: list[Lugar],
+) -> tuple[str, int, int, list]:
+    result = janus.query_once(
+        "bce_api:dica(L, C, Objetos, Amigos, Fixos, Sentados, R)",
+        {
+            "L": linhas,
+            "C": colunas,
+            "Objetos": objetos,
+            "Amigos": amigos,
+            "Fixos": fixos,
+            "Sentados": sentados,
+        },
+    )["R"]
+    # Mesmo esquema de _resultado: cada átomo vira uma exceção e a lista
+    # vira o retorno. Motivo é [] ou [amigo, tipo, args], ver dica/7.
+    match result:
+        case "invalido":
+            raise InvalidState
+        case "completo":
+            raise PhaseComplete
+        case "sem_solucao":
+            raise PhaseUnsolvable
+        case "sem_jogada":
+            raise NoForcedMove
+        case [amigo, linha, coluna, motivo]:
+            return amigo, linha, coluna, motivo
+    raise ValueError(f"resultado inesperado de dica/7: {result!r}")
+
+
+def resolver(
+    linhas: int,
+    colunas: int,
+    objetos: list[Lugar],
+    amigos: list[str],
+    fixos: list[Lugar],
+    sentados: list[Lugar],
+) -> tuple[list[Lugar], list[list[str]], bool]:
+    result = janus.query_once(
+        "bce_api:resolver(L, C, Objetos, Amigos, Fixos, Sentados, R)",
+        {
+            "L": linhas,
+            "C": colunas,
+            "Objetos": objetos,
+            "Amigos": amigos,
+            "Fixos": fixos,
+            "Sentados": sentados,
         },
     )
     return _resultado(result["R"])
