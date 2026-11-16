@@ -3,9 +3,6 @@
 Contrato entre o Elm, o Python e o Prolog para o **Grupo de Estudo na BCE**
 (issue #9). As regras do jogo estão em [REGRAS.md](REGRAS.md).
 
-> **Proposta:** comente na #9 se algo precisa mudar, principalmente quem
-> faz o Elm (#10, #11, #12), o gerador (#6) e a dica (#7).
-
 Todas as rotas são `POST` e recebem e devolvem JSON. A documentação
 interativa fica em http://localhost:8000/docs com o backend rodando.
 
@@ -101,16 +98,21 @@ O que muda a cada jogada. Toda rota que mexe no tabuleiro devolve isto.
 - `status`: `ok` (✅), `violada` (❌) ou `pendente` (o amigo, ou alguém que a
   mania dele cita, ainda não sentou).
 
-## Rotas prontas
+## Rotas
 
 ### `POST /api/fase/nova`
 
 Pedido: `{"dificuldade": "facil"}` (`facil`, `medio` ou `dificil`).
 Resposta: uma **Fase**.
 
-Enquanto o gerador (#6) não fica pronto, toda dificuldade devolve a fase de
-exemplo do REGRAS.md. Quando ele entrar, só muda o `nova_fase/7` em
-`bce_api.pl`; o JSON continua igual.
+A fase é sorteada pelo `generate/4` do `bce.pl` (#6) e tem solução única.
+O tamanho depende da dificuldade:
+
+| `dificuldade` | Mesa | Amigos |
+|---|---|---|
+| `facil` | 2x3 | 4 |
+| `medio` | 3x3 | 5 |
+| `dificil` | 3x4 | 7 |
 
 ### `POST /api/fase/estado`
 
@@ -124,26 +126,7 @@ amigo: o Elm tira o amigo de `sentados` e pergunta o novo estado.
 Pedido: `{"fase": Fase, "sentados": [Lugar], "amigo": "joao", "linha": 0,
 "coluna": 2}`. Resposta: o **Estado** depois de sentar o amigo.
 
-## Erros
-
-Como no Sudoku, todo erro volta como **HTTP 422** com uma mensagem pronta
-para a tela em `detail`:
-
-| Quando | `detail` |
-|---|---|
-| JSON fora do formato (campo faltando, dificuldade desconhecida, coordenada negativa) | erro padrão do FastAPI (`detail` é uma lista) |
-| Estado impossível: amigo ou objeto desconhecido, fixo fora do lugar, duas pessoas na mesma cadeira | `"Este estado não existe no jogo. ..."` |
-| Jogada não permitida: cadeira ocupada ou fora da mesa, amigo já sentado ou fora da fase | `"Essa jogada não é permitida: ..."` |
-
-Uma jogada que deixa alguma mania ❌ **não** é erro: ela é aceita e aparece
-como `violada` no status.
-
-## Rotas propostas (dependem de outras issues)
-
-Ainda não existem. O formato fica combinado aqui para quem fizer o Prolog e
-o Elm já trabalhar em cima dele.
-
-### `POST /api/fase/dica` (depende do #7)
+### `POST /api/fase/dica`
 
 Pedido: `{"fase": Fase, "sentados": [Lugar]}`. Resposta:
 
@@ -155,15 +138,32 @@ Pedido: `{"fase": Fase, "sentados": [Lugar]}`. Resposta:
 `motivo` é a mania que força a jogada, no mesmo formato de **Mania**. O Elm
 monta a frase ("A Mayara não pode ficar perto do João..."), assim o texto
 fica num lugar só. Quando nenhuma mania é necessária (a cadeira sobra por
-eliminação, só pela mesa), `motivo` é `null`. 422 se a fase já terminou ou
-não tem solução.
+eliminação, só pela mesa), `motivo` é `null`.
 
-No Prolog, `hint/4` devolve `[sentar, Amigo, Linha, Coluna, Dono]`,
-`[completo]` ou `[sem_solucao]`. `Dono` é o amigo da mania que força a
-jogada, ou o átomo `nenhuma` (vira `motivo: null`). `hint/4` falha se o
-estado for inválido ou se nenhuma jogada for forçada.
+No Prolog, `bce_api:dica/7` chama o `hint/4`, que devolve
+`[sentar, Amigo, Linha, Coluna, Dono]`, `[completo]` ou `[sem_solucao]`.
+`Dono` é o amigo da mania que força a jogada, ou o átomo `nenhuma` (vira
+`motivo: null`). Se o `hint/4` falhar, nenhuma jogada é obrigatória: isso
+só acontece numa fase com mais de uma solução.
 
-### `POST /api/fase/resolver` (depende do #5)
+### `POST /api/fase/resolver`
 
 Pedido: `{"fase": Fase, "sentados": [Lugar]}`. Resposta: um **Estado** com
-todo mundo sentado. 422 se não houver solução a partir dos sentados atuais.
+todo mundo sentado, a partir dos sentados atuais (`solve/4`).
+
+## Erros
+
+Como no Sudoku, todo erro volta como **HTTP 422** com uma mensagem pronta
+para a tela em `detail`:
+
+| Quando | `detail` |
+|---|---|
+| JSON fora do formato (campo faltando, dificuldade desconhecida, coordenada negativa) | erro padrão do FastAPI (`detail` é uma lista) |
+| Estado impossível: amigo ou objeto desconhecido, fixo fora do lugar, duas pessoas na mesma cadeira | `"Este estado não existe no jogo. ..."` |
+| Jogada não permitida: cadeira ocupada ou fora da mesa, amigo já sentado ou fora da fase | `"Essa jogada não é permitida: ..."` |
+| Dica com todos sentados | `"Todo mundo já está sentado."` |
+| Dica ou resolver sem solução a partir dos sentados atuais | `"Não dá para terminar a fase a partir daqui. ..."` |
+| Dica quando nenhuma jogada é obrigatória | `"Nenhuma jogada é obrigatória agora: mais de uma cadeira serve."` |
+
+Uma jogada que deixa alguma mania ❌ **não** é erro: ela é aceita e aparece
+como `violada` no status.

@@ -149,11 +149,25 @@ class EstadoResponse(BaseModel):
     venceu: bool
 
 
+class DicaResponse(BaseModel):
+    amigo: str
+    linha: int
+    coluna: int
+    # A mania que força a jogada; None quando só a mesa a força. O Elm monta
+    # a frase a partir dela (docs/API.md).
+    motivo: Mania | None
+
+
 INVALID_STATE = "Este estado não existe no jogo. Confira a mesa e quem está sentado."
 INVALID_MOVE = (
     "Essa jogada não é permitida: a cadeira está ocupada ou fora da mesa, "
     "ou o amigo já sentou ou não está nesta fase."
 )
+PHASE_COMPLETE = "Todo mundo já está sentado."
+PHASE_UNSOLVABLE = (
+    "Não dá para terminar a fase a partir daqui. Levante algum amigo e tente de novo."
+)
+NO_FORCED_MOVE = "Nenhuma jogada é obrigatória agora: mais de uma cadeira serve."
 
 
 def _lugares(lugares: list[Lugar]) -> list[list]:
@@ -168,6 +182,11 @@ def _argumentos_da_fase(fase: Fase) -> dict:
         "amigos": fase.amigos,
         "fixos": _lugares(fase.fixos),
     }
+
+
+def _mania(amigo: str, tipo: str, args: list) -> Mania:
+    # Args é [] (sem alvo) ou [alvo]: ver nova_fase/7 em bce_api.pl.
+    return Mania(amigo=amigo, tipo=tipo, alvo=args[0] if args else None)
 
 
 def _estado_response(resultado) -> EstadoResponse:
@@ -192,11 +211,7 @@ def nova_fase(request: NovaFaseRequest) -> Fase:
         ),
         amigos=fase["amigos"],
         fixos=[Lugar(amigo=a, linha=l, coluna=c) for a, l, c in fase["fixos"]],
-        # Args é [] (sem alvo) ou [alvo]: ver nova_fase/7 em bce_api.pl.
-        manias=[
-            Mania(amigo=a, tipo=t, alvo=args[0] if args else None)
-            for a, t, args in fase["manias"]
-        ],
+        manias=[_mania(a, t, args) for a, t, args in fase["manias"]],
     )
 
 
@@ -225,4 +240,39 @@ def jogada(request: JogadaRequest) -> EstadoResponse:
         raise HTTPException(status_code=422, detail=INVALID_STATE) from None
     except prolog.InvalidMove:
         raise HTTPException(status_code=422, detail=INVALID_MOVE) from None
+    return _estado_response(resultado)
+
+
+@app.post("/api/fase/dica")
+def dica(request: EstadoRequest) -> DicaResponse:
+    try:
+        amigo, linha, coluna, motivo = prolog.dica(
+            **_argumentos_da_fase(request.fase), sentados=_lugares(request.sentados)
+        )
+    except prolog.InvalidState:
+        raise HTTPException(status_code=422, detail=INVALID_STATE) from None
+    except prolog.PhaseComplete:
+        raise HTTPException(status_code=422, detail=PHASE_COMPLETE) from None
+    except prolog.PhaseUnsolvable:
+        raise HTTPException(status_code=422, detail=PHASE_UNSOLVABLE) from None
+    except prolog.NoForcedMove:
+        raise HTTPException(status_code=422, detail=NO_FORCED_MOVE) from None
+    return DicaResponse(
+        amigo=amigo,
+        linha=linha,
+        coluna=coluna,
+        motivo=_mania(*motivo) if motivo else None,
+    )
+
+
+@app.post("/api/fase/resolver")
+def resolver(request: EstadoRequest) -> EstadoResponse:
+    try:
+        resultado = prolog.resolver(
+            **_argumentos_da_fase(request.fase), sentados=_lugares(request.sentados)
+        )
+    except prolog.InvalidState:
+        raise HTTPException(status_code=422, detail=INVALID_STATE) from None
+    except prolog.PhaseUnsolvable:
+        raise HTTPException(status_code=422, detail=PHASE_UNSOLVABLE) from None
     return _estado_response(resultado)
