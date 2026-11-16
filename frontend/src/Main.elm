@@ -34,6 +34,7 @@ type alias Partida =
     , dica : Maybe Dica
     , dicasUsadas : Int
     , erro : Maybe String
+    , aviso : Maybe String
     }
 
 
@@ -57,6 +58,7 @@ A consulta identifica a transição que o servidor confirmou.
 type Consulta
     = FaseNova Dificuldade Fase
     | Jogada
+    | Levantada Amigo Selecao
     | Reinicio
     | Solucao
 
@@ -139,7 +141,7 @@ executar acao model =
             duranteRodada model <|
                 \partida ->
                     if List.member amigo (Bce.semAssento partida.fase partida.estado.sentados) then
-                        ( { model | tela = PartidaAberta { partida | selecao = AmigoSelecionado amigo, erro = Nothing } }
+                        ( { model | tela = PartidaAberta { partida | selecao = AmigoSelecionado amigo, erro = Nothing, aviso = Nothing } }
                         , Cmd.none
                         )
 
@@ -152,7 +154,14 @@ executar acao model =
         PedirDica ->
             duranteRodada model <|
                 \partida ->
-                    iniciar (Api.dica partida.fase partida.estado.sentados RecebeuDica) model
+                    -- Com uma dica na tela, pedir de novo devolveria a mesma
+                    -- jogada e só gastaria uma estrela.
+                    case partida.dica of
+                        Just _ ->
+                            ( model, Cmd.none )
+
+                        Nothing ->
+                            iniciar (Api.dica partida.fase partida.estado.sentados RecebeuDica) model
 
         Resolver ->
             duranteRodada model <|
@@ -198,7 +207,7 @@ ativarCadeira posicao model partida =
         Just amigo ->
             case Bce.levantar partida.fase sentados amigo of
                 Ok restantes ->
-                    iniciar (Api.estado partida.fase restantes (RecebeuEstado Jogada)) model
+                    iniciar (Api.estado partida.fase restantes (RecebeuEstado (Levantada amigo partida.selecao))) model
 
                 Err recusa ->
                     ( falhou (Bce.recusaParaTexto recusa) model, Cmd.none )
@@ -225,7 +234,7 @@ iniciar comando model =
         tela =
             case model.tela of
                 PartidaAberta partida ->
-                    PartidaAberta { partida | erro = Nothing }
+                    PartidaAberta { partida | erro = Nothing, aviso = Nothing }
 
                 Inicio ->
                     Inicio
@@ -276,24 +285,48 @@ aplicarEstado consulta estado tela =
             mapPartida (\partida -> novaPartida partida.dificuldade partida.fase estado) tela
 
         Jogada ->
-            mapPartida
-                (\partida ->
-                    { partida
-                        | estado = estado
-                        , selecao = NadaSelecionado
-                        , desfecho = Rodada (rodada estado partida.dicasUsadas)
-                        , dica = Nothing
-                        , erro = Nothing
-                    }
-                )
-                tela
+            mapPartida (aplicarJogada estado Nothing) tela
+
+        Levantada levantado selecao ->
+            mapPartida (aplicarJogada estado (avisoAoLevantar levantado selecao)) tela
 
         Solucao ->
             mapPartida
                 (\partida ->
-                    { partida | estado = estado, selecao = NadaSelecionado, desfecho = Resolvida, dica = Nothing, erro = Nothing }
+                    { partida | estado = estado, selecao = NadaSelecionado, desfecho = Resolvida, dica = Nothing, erro = Nothing, aviso = Nothing }
                 )
                 tela
+
+
+aplicarJogada : Estado -> Maybe String -> Partida -> Partida
+aplicarJogada estado aviso partida =
+    { partida
+        | estado = estado
+        , selecao = NadaSelecionado
+        , desfecho = Rodada (rodada estado partida.dicasUsadas)
+        , dica = Nothing
+        , erro = Nothing
+        , aviso = aviso
+    }
+
+
+{-| Ativar a cadeira de alguém levanta essa pessoa mesmo com outro amigo
+selecionado, e a seleção se perde. O aviso explica o que aconteceu.
+-}
+avisoAoLevantar : Amigo -> Selecao -> Maybe String
+avisoAoLevantar levantado selecao =
+    case selecao of
+        NadaSelecionado ->
+            Nothing
+
+        AmigoSelecionado selecionado ->
+            Just
+                ("Você levantou "
+                    ++ Bce.comArtigo levantado
+                    ++ " e desfez a seleção d"
+                    ++ Bce.comArtigo selecionado
+                    ++ ". A cadeira estava ocupada; selecione um amigo de novo para sentá-lo."
+                )
 
 
 novaPartida : Dificuldade -> Fase -> Estado -> Partida
@@ -306,6 +339,7 @@ novaPartida dificuldade fase estado =
     , dica = Nothing
     , dicasUsadas = 0
     , erro = Nothing
+    , aviso = Nothing
     }
 
 
@@ -383,7 +417,7 @@ viewTela model =
             in
             div [ class "bce-layout" ]
                 [ div [ class "bce-acoes" ]
-                    [ viewAcao "Dica" PedirDica (not jogavel)
+                    [ viewAcao "Dica" PedirDica (not jogavel || partida.dica /= Nothing)
                     , viewAcao "Resolver" Resolver (not jogavel)
                     , viewAcao "Recomeçar" Recomecar model.aguardando
                     ]
@@ -418,6 +452,12 @@ viewMensagens aguardando partida =
         [ case partida.erro of
             Just erro ->
                 viewErro erro
+
+            Nothing ->
+                text ""
+        , case partida.aviso of
+            Just aviso ->
+                p [ class "message message--info", attribute "role" "status" ] [ text aviso ]
 
             Nothing ->
                 text ""

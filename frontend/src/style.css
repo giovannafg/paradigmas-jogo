@@ -483,6 +483,7 @@
   .message--error   { @apply alert-error; }
   .message--success { @apply alert-success; }
   .message--loading { @apply alert-soft; }
+  .message--info    { @apply alert-info; }
 
   .message-close {
     @apply btn btn-circle btn-ghost btn-xs;

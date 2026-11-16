@@ -12,7 +12,7 @@ fase =
     { linhas = 2
     , colunas = 3
     , objetos = [ ( Tomada, Bce.Posicao 0 2 ) ]
-    , amigos = [ Bevi, Joao ]
+    , amigos = [ Bevi, Joao, Mayara ]
     , fixos = [ Bce.Lugar Bevi (Bce.Posicao 1 1) ]
     , manias = []
     }
@@ -21,6 +21,11 @@ fase =
 estadoInicial : Api.Estado
 estadoInicial =
     { sentados = fase.fixos, status = [], venceu = False }
+
+
+estadoComJoao : Api.Estado
+estadoComJoao =
+    { estadoInicial | sentados = fase.fixos ++ [ Bce.Lugar Joao dica.posicao ] }
 
 
 estadoFinal : Api.Estado
@@ -64,6 +69,16 @@ suite =
         sentar =
             AcaoJogo (AtivarCadeira dica.posicao)
 
+        -- Senta e levanta o João: a jogada tira a dica da tela e libera
+        -- o botão para pedir a próxima.
+        jogarEDesfazer =
+            [ selecionar
+            , sentar
+            , RecebeuEstado Jogada (Ok estadoComJoao)
+            , sentar
+            , RecebeuEstado (Levantada Joao NadaSelecionado) (Ok estadoInicial)
+            ]
+
         comPartida conferir model =
             case model.tela of
                 PartidaAberta partida ->
@@ -79,7 +94,7 @@ suite =
             test ("vitória com " ++ String.fromInt quantidade ++ " dicas") <|
                 \_ ->
                     passar
-                        (List.concat (List.repeat quantidade dicaRecebida)
+                        (List.concat (List.repeat quantidade (dicaRecebida ++ jogarEDesfazer))
                             ++ [ selecionar, sentar, RecebeuEstado Jogada (Ok estadoFinal) ]
                         )
                         |> comPartida
@@ -109,6 +124,37 @@ suite =
                                     Expect.equal ( 1, Just dica, estadoInicial )
                                         ( partida.dicasUsadas, partida.dica, partida.estado )
                                 )
+               , test "dica na tela bloqueia novo pedido até a próxima jogada" <|
+                    \_ ->
+                        let
+                            model =
+                                passar (dicaRecebida ++ [ pedirDica ])
+                        in
+                        model
+                            |> comPartida
+                                (\partida ->
+                                    Expect.equal ( 1, False )
+                                        ( partida.dicasUsadas, model.aguardando )
+                                )
+               , test "levantar alguém com outro amigo selecionado mostra um aviso" <|
+                    \_ ->
+                        passar
+                            (List.take 3 jogarEDesfazer
+                                ++ [ AcaoJogo (Selecionar Mayara)
+                                   , sentar
+                                   , RecebeuEstado (Levantada Joao (AmigoSelecionado Mayara)) (Ok estadoInicial)
+                                   ]
+                            )
+                            |> comPartida
+                                (\partida ->
+                                    Expect.equal
+                                        ( NadaSelecionado, Just "Você levantou o João e desfez a seleção da Mayara. A cadeira estava ocupada; selecione um amigo de novo para sentá-lo." )
+                                        ( partida.selecao, partida.aviso )
+                                )
+               , test "levantar sem seleção não mostra aviso" <|
+                    \_ ->
+                        passar (List.take 3 jogarEDesfazer ++ [ sentar, RecebeuEstado (Levantada Joao NadaSelecionado) (Ok estadoInicial) ])
+                            |> comPartida (\partida -> Expect.equal Nothing partida.aviso)
                , test "erro de dica aparece e não conta" <|
                     \_ ->
                         passar [ pedirDica, RecebeuDica (Err "Sem solução") ]
