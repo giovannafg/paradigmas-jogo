@@ -165,9 +165,11 @@ JSON e o Elm redesenha a mesa com ✅ e ❌.
 | Elm    | Estado da partida (seleção, dicas usadas, estrelas, erros), desenho da mesa e dos cards, chamadas HTTP e conversão do JSON em tipos do domínio | `frontend/src/Main.elm` (Model, update, view), `frontend/src/Bce.elm` (tipos do domínio), `frontend/src/Api.elm` (HTTP e JSON) |
 | Python | Só integração: expõe os predicados como rotas HTTP e recusa JSON fora do formato antes de chamar o Prolog | `backend/app/main.py`, `backend/app/prolog.py` |
 
-O visual fica em `frontend/src/style.css`. Os arquivos do Sudoku
-(`sudoku.pl`, `Sudoku.elm` e as rotas `/api/generate`, `/api/solve` e
-`/api/hint`) vieram do template e não fazem parte do jogo.
+O visual fica em `frontend/src/style.css`. Os arquivos do Sudoku que vieram
+do template (`sudoku.pl`, `Sudoku.elm`, as rotas `/api/generate`,
+`/api/solve` e `/api/hint`, o `style-simples.css` e os testes
+correspondentes) foram removidos na issue #14: o repositório só tem o código
+do nosso jogo.
 
 ## 5. Parte em Prolog
 

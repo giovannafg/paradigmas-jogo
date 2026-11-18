@@ -20,70 +20,15 @@ from pathlib import Path
 
 import janus_swi as janus
 
-Grid = list[list[int]]
-
 PROLOG_DIR = Path(__file__).parent.parent / "prolog"
-PROLOG_FILE = PROLOG_DIR / "sudoku.pl"
 BCE_API_FILE = PROLOG_DIR / "bce_api.pl"
 
-# consult/1 carrega o arquivo .pl, como `?- [sudoku].` no terminal do swipl.
-# bce_api.pl carrega o bce.pl sozinho (use_module).
-janus.consult(str(PROLOG_FILE))
+# consult/1 carrega o arquivo .pl, como `?- [bce_api].` no terminal do swipl.
+# O bce_api.pl carrega o bce.pl sozinho (use_module).
 janus.consult(str(BCE_API_FILE))
 
-
-class NoSolution(Exception):
-    """O tabuleiro enviado não tem solução."""
-
-
-class BoardComplete(Exception):
-    """O tabuleiro não tem casas vazias: não há dica para dar."""
-
-
-def solve(puzzle: Grid) -> Grid:
-    # query_once executa a consulta e devolve um dict com as variáveis da
-    # consulta (em maiúsculas, como no Prolog) e a chave 'truth', que diz se
-    # a consulta teve sucesso.
-    result = janus.query_once("sudoku:solve(Puzzle, Solution)", {"Puzzle": puzzle})
-    if not result["truth"]:
-        raise NoSolution
-    return result["Solution"]
-
-
-def generate(difficulty: str) -> Grid:
-    # Strings do Python viram strings do Prolog, mas generate/2 espera um
-    # ÁTOMO (easy, medium, hard). atom_string/2 faz a conversão do lado Prolog.
-    result = janus.query_once(
-        "atom_string(D, Name), sudoku:generate(D, Puzzle)", {"Name": difficulty}
-    )
-    return result["Puzzle"]
-
-
-def hint(board: Grid) -> tuple[int, int, int]:
-    result = janus.query_once("sudoku:hint(Board, Result)", {"Board": board})["Result"]
-    # hint/2 sempre tem sucesso e devolve, em Result, uma lista [Linha,
-    # Coluna, Valor] ou um dos átomos `complete` e `unsolvable` (átomos
-    # chegam ao Python como strings). Quem decidiu o que aconteceu foi o
-    # Prolog; aqui só traduzimos cada caso. O `match` do Python escolhe o
-    # ramo pela FORMA do valor, parecido com o casamento de padrões do
-    # Prolog e do Elm.
-    match result:
-        case "complete":
-            raise BoardComplete
-        case "unsolvable":
-            raise NoSolution
-        case [row, col, value]:
-            return row, col, value
-    raise ValueError(f"resultado inesperado de hint/2: {result!r}")
-
-
-# ---------------------------------------------------------------------------
-# Grupo de Estudo na BCE (prolog/bce_api.pl)
-#
 # Lugar = [nome, linha, coluna], usado para objetos, fixos e sentados.
 # Os nomes vão como strings e o bce_api.pl os converte em átomos.
-# ---------------------------------------------------------------------------
-
 Lugar = list  # [str, int, int]
 
 
@@ -108,6 +53,9 @@ class NoForcedMove(Exception):
 
 
 def nova_fase(dificuldade: str) -> dict:
+    # query_once executa a consulta e devolve um dict com as variáveis da
+    # consulta (em maiúsculas, como no Prolog) e a chave 'truth', que diz se
+    # a consulta teve sucesso.
     result = janus.query_once(
         "bce_api:nova_fase(D, L, C, Objetos, Amigos, Fixos, Manias)",
         {"D": dificuldade},
@@ -127,8 +75,10 @@ def nova_fase(dificuldade: str) -> dict:
 
 
 def _resultado(result) -> tuple[list[Lugar], list[list[str]], bool]:
-    # O Prolog decide o que aconteceu; aqui só traduzimos cada forma, como
-    # em hint() acima. Átomos chegam como strings, inclusive true/false.
+    # O Prolog decide o que aconteceu; aqui só traduzimos cada forma. O
+    # `match` do Python escolhe o ramo pela FORMA do valor, parecido com o
+    # casamento de padrões do Prolog e do Elm. Átomos chegam como strings,
+    # inclusive true/false.
     match result:
         case "invalido":
             raise InvalidState
@@ -211,7 +161,7 @@ def dica(
             "Sentados": sentados,
         },
     )["R"]
-    # Mesmo esquema de _resultado: cada átomo vira uma exceção e a lista
+    # Mesmo esquema do _resultado: cada átomo vira uma exceção e a lista
     # vira o retorno. Motivo é [] ou [amigo, tipo, args], ver dica/7.
     match result:
         case "invalido":
