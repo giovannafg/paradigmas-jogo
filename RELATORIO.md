@@ -183,8 +183,9 @@ do nosso jogo.
 
 | Predicado | Local | O que faz |
 |-----------|-------|-----------|
-| [`resolver(+Entrada, -Saida)`] | [`arquivo.pl:42`] | [...] |
-| [...] | [...] | [...] |
+| `solve(+Mesa, +Amigos, +Sentados, -Solucao)` | `bce.pl:434` | Completa a mesa a partir de quem já está sentado: impõe as restrições e só então busca, com `labeling([ff], Vars)`. Falha se não houver solução |
+| `count_solutions(+Mesa, +Amigos, +Sentados, +Limite, -N)` | `bce.pl:441` | Conta as soluções até um limite. É o que permite exigir solução única sem enumerar todas |
+| `generate(+Nivel, -Mesa, -Amigos, -Sentados)` | `bce.pl:453` | Sorteia uma fase com solução única no nível `facil`, `medio` ou `dificil`, e devolve quem já começa sentado |
 
 ### 5.2 Conceitos do paradigma lógico utilizados
 
@@ -195,13 +196,34 @@ do nosso jogo.
 
 - [ ] Fatos e regras como base de conhecimento: [onde]
 - [ ] Unificação e casamento de padrões: [onde]
-- [ ] Recursão (inclusive sobre listas): [onde]
-- [ ] Backtracking e múltiplas soluções: [onde]
-- [ ] `findall/3`, `bagof/3`, `setof/3` ou similares: [onde]
-- [ ] Corte (`!`) ou negação (`\+`), e por que foram necessários: [onde]
-- [ ] Programação por restrições (CLP(FD) ou outra): [onde]
+- [x] Recursão (inclusive sobre listas): `ancoras/5` (`bce.pl:503`) e
+  `enxuga/5` (`bce.pl:511`) percorrem a lista de candidatos a âncora, uma
+  cadeira por chamada; `rotulo_aleatorio/1` (`bce.pl:491`) percorre as
+  variáveis de posição.
+- [x] Backtracking e múltiplas soluções: `solve/4` é `nondet` e entrega as
+  soluções sob demanda (`bce.pl:434`), o que é exatamente o que
+  `count_solutions/5` precisa. No gerador, `between(1, 50, _)`
+  (`bce.pl:455`) usa o backtracking para tentar outra fase candidata quando
+  a anterior não fecha.
+- [x] `findall/3`, `bagof/3`, `setof/3` ou similares:
+  `aggregate_all(count, limit(Limite, ...), N)` em `count_solutions/5`
+  (`bce.pl:441`), que para de contar no limite; `findall/3` na lista de
+  amigos (`bce.pl:466`), nas cadeiras da mesa (`bce.pl:480`) e no domínio
+  que sobrou de uma variável (`bce.pl:496`).
+- [x] Corte (`!`) ou negação (`\+`), e por que foram necessários: o corte em
+  `generate/4` (`bce.pl:457`) fixa a primeira fase candidata que serviu. Sem
+  ele, pedir outra resposta faria o `between/3` gerar uma fase diferente, e
+  o gerador deixaria de ser determinístico para quem chama.
+- [x] Programação por restrições (CLP(FD) ou outra): a busca do resolvedor é
+  `labeling([ff], Vars)` (`bce.pl:438`) — a estratégia `ff` (*first fail*)
+  escolhe primeiro a cadeira com menos opções. No gerador, `fd_dom/2`
+  (`bce.pl:495`) lê o domínio que as restrições deixaram para sortear um
+  valor ainda possível. A modelagem das manias como restrições está na
+  seção da issue #4.
 - [ ] Predicados de ordem superior (`maplist`, `foldl`, `include`...): [onde]
-- [ ] Outro: [...]
+- [x] Outro: `random_permutation/2` e `random_member/2` (`bce.pl:467`,
+  `bce.pl:483`) para que duas fases do mesmo nível não saiam iguais, e
+  `selectchk/3` (`bce.pl:513`) para remover uma âncora específica da lista.
 
 ### 5.3 Trecho em destaque
 
@@ -212,11 +234,67 @@ do nosso jogo.
   uma tradução de um algoritmo imperativo.
 -->
 
+O gerador de fases (`bce.pl:453`). Ele tem de entregar uma fase com
+**solução única**: nem frouxa, com várias formas de sentar todo mundo, nem
+travada, sem nenhuma.
+
 ```prolog
-[trecho]
+generate(Nivel, Mesa, Amigos, Sentados) :-
+    nivel(Nivel, _, _, _, _),
+    between(1, 50, _),
+    fase_candidata(Nivel, Mesa, Amigos, Sentados),
+    !.
+
+%   Fixa amigos da solução, um por vez, até a solução ficar única.
+ancoras(Mesa, Amigos, Candidatos, Ancoras0, Ancoras) :-
+    (   count_solutions(Mesa, Amigos, Ancoras0, 2, 1)
+    ->  Ancoras = Ancoras0
+    ;   Candidatos = [Lugar | Resto],
+        ancoras(Mesa, Amigos, Resto, [Lugar | Ancoras0], Ancoras)
+    ).
+
+%   Tira as âncoras que não são necessárias para a solução continuar única.
+enxuga(_, _, [], Ancoras, Ancoras).
+enxuga(Mesa, Amigos, [Lugar | Resto], Ancoras0, Ancoras) :-
+    selectchk(Lugar, Ancoras0, Sem),
+    (   count_solutions(Mesa, Amigos, Sem, 2, 1)
+    ->  enxuga(Mesa, Amigos, Resto, Sem, Ancoras)
+    ;   enxuga(Mesa, Amigos, Resto, Ancoras0, Ancoras)
+    ).
 ```
 
-[Explicação.]
+O caminho é o inverso do que eu faria numa linguagem imperativa. Lá eu
+montaria uma fase e depois testaria se ela presta, repetindo até dar sorte.
+Aqui parto de uma **solução** — sorteada em `solucao_aleatoria/3`
+(`bce.pl:486`) — e vou **escondendo** gente dela.
+
+`ancoras/5` senta um amigo por vez, na ordem sorteada, e a cada passo
+pergunta quantas soluções ainda existem. Quando a resposta é exatamente 1, a
+fase ficou determinada e a recursão para. Depois `enxuga/5` faz a passagem
+contrária: tenta remover cada âncora e só a devolve para a lista se a
+solução deixar de ser única — é o que evita entregar uma fase com gente
+sentada à toa.
+
+O que faz isso ser lógico, e não um algoritmo traduzido:
+
+- **Nunca escrevi como achar a solução.** `solve/4` (`bce.pl:434`) impõe as
+  restrições das manias e chama `labeling([ff], Vars)`. Quem decide a ordem
+  de tentar as cadeiras é o resolvedor de restrições, com a estratégia
+  *first fail*; eu só declarei o que é uma mesa válida.
+- **Contar sem enumerar.** "Solução única" não exige todas as soluções:
+  `count_solutions/5` (`bce.pl:441`) envolve o `solve/4` num
+  `aggregate_all(count, limit(2, ...), N)`. O Prolog para na segunda
+  solução, porque é só isso que distingue única de mais de uma. Em código
+  imperativo eu teria escrito um contador e um laço com `break`.
+- **Sortear sem perder o backtracking.** `rotulo_aleatorio/1` (`bce.pl:491`)
+  substitui o `label/1` padrão: lê com `fd_dom/2` o domínio que as
+  restrições deixaram e tenta os valores em ordem sorteada com `member/2`.
+  Por ser `member/2`, e não uma atribuição, se aquele valor não levar a nada
+  o Prolog volta e tenta o próximo sozinho.
+
+A parte menos elegante é o `between(1, 50, _)` com o corte: às vezes o
+sorteio cai numa mesa em que a fase não fecha, e aí tentar outra sai mais
+barato que insistir. O corte fixa a primeira que serviu.
 
 ## 6. Parte em Elm
 
