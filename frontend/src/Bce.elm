@@ -40,7 +40,7 @@ module Bce exposing
 {-| Domínio do jogo "Grupo de Estudo na BCE", do lado do Elm.
 
 Este módulo é PURO: não faz HTTP e não sabe nada de HTML. São só tipos e
-funções sobre eles, como o `Sudoku.elm` do template.
+funções sobre eles.
 
 A ideia central é fazer o compilador trabalhar por nós. Cada pergunta do
 jogo vira um _custom type_ com exatamente as respostas possíveis, e o `case`

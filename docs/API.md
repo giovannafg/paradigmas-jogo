@@ -153,8 +153,8 @@ todo mundo sentado, a partir dos sentados atuais (`solve/4`).
 
 ## Erros
 
-Como no Sudoku, todo erro volta como **HTTP 422** com uma mensagem pronta
-para a tela em `detail`:
+Todo erro volta como **HTTP 422** com uma mensagem pronta para a tela em
+`detail`:
 
 | Quando | `detail` |
 |---|---|

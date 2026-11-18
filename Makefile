@@ -21,7 +21,6 @@ frontend:           ## só o frontend: http://localhost:5173
 test: test-prolog test-backend test-frontend
 
 test-prolog:
-	swipl -g run_tests -t halt backend/prolog/test_sudoku.pl
 	swipl -g run_tests -t halt backend/prolog/test_bce.pl
 
 test-backend:

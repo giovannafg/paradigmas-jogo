@@ -1,23 +1,17 @@
 module Api exposing
-    ( Difficulty(..)
-    , Dificuldade(..)
+    ( Dificuldade(..)
     , Estado
-    , Hint
     , dica
     , dicaDecoder
-    , difficultyLabel
     , dificuldadeLabel
     , encodePedido
     , errorDetail
     , estado
     , estadoDecoder
     , faseDecoder
-    , generate
-    , hint
     , jogada
     , novaFase
     , resolver
-    , solve
     )
 
 {-| Comunicação com o backend (FastAPI + Prolog).
@@ -26,13 +20,12 @@ Em Elm, uma requisição HTTP não "acontece" quando chamamos uma função. As
 funções deste módulo devolvem um `Cmd msg`: uma DESCRIÇÃO do efeito que
 queremos. Quem executa o efeito é o runtime do Elm; quando a resposta chega,
 ele chama nosso `update` com a mensagem que indicamos (por exemplo,
-`GotPuzzle resultado`). É assim que o Elm mantém todas as funções puras.
+`RecebeuFase resultado`). É assim que o Elm mantém todas as funções puras.
 
 As URLs começam com `/api/...`. Em desenvolvimento, o Vite repassa essas
 requisições para o backend em <http://localhost:8000> (veja vite.config.js).
-
-As funções da Mesa da BCE usam as rotas `/api/fase/*` descritas em
-docs/API.md e os tipos do módulo `Bce`.
+As rotas `/api/fase/*` estão descritas em docs/API.md e devolvem os tipos do
+módulo `Bce`.
 
 `faseDecoder`, `estadoDecoder`, `dicaDecoder`, `encodePedido` e
 `errorDetail` são expostos só para os testes em tests/ApiTest.elm. A tela
@@ -44,131 +37,14 @@ import Bce exposing (Amigo, Dica, Fase, Lugar, Objeto, Posicao, Regra, StatusMan
 import Http
 import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode
-import Sudoku exposing (Board)
-
-
-type Difficulty
-    = Easy
-    | Medium
-    | Hard
-
-
-difficultyLabel : Difficulty -> String
-difficultyLabel difficulty =
-    case difficulty of
-        Easy ->
-            "Fácil"
-
-        Medium ->
-            "Médio"
-
-        Hard ->
-            "Difícil"
-
-
-{-| Nome usado pela API (e pelo Prolog: são os átomos easy/medium/hard).
--}
-difficultyToString : Difficulty -> String
-difficultyToString difficulty =
-    case difficulty of
-        Easy ->
-            "easy"
-
-        Medium ->
-            "medium"
-
-        Hard ->
-            "hard"
-
-
-{-| Um _record_ (registro): um conjunto de campos com nome. O `type alias`
-também cria automaticamente uma função construtora `Hint : Int -> Int -> Int
--> Hint`, que usamos no decoder abaixo.
--}
-type alias Hint =
-    { row : Int
-    , col : Int
-    , value : Int
-    }
 
 
 
 -- REQUISIÇÕES
 --
 -- Todas recebem uma função `toMsg` que diz como embrulhar o resultado numa
--- mensagem. `Result String a` é: ou `Ok valor`, ou `Err mensagemDeErro`.
-
-
-generate : Difficulty -> (Result String Board -> msg) -> Cmd msg
-generate difficulty toMsg =
-    Http.post
-        { url = "/api/generate"
-        , body =
-            Http.jsonBody
-                (Encode.object [ ( "difficulty", Encode.string (difficultyToString difficulty) ) ])
-        , expect = expectJson toMsg boardDecoder
-        }
-
-
-solve : Board -> (Result String Board -> msg) -> Cmd msg
-solve board toMsg =
-    Http.post
-        { url = "/api/solve"
-        , body = Http.jsonBody (encodeBoard board)
-        , expect = expectJson toMsg boardDecoder
-        }
-
-
-hint : Board -> (Result String Hint -> msg) -> Cmd msg
-hint board toMsg =
-    Http.post
-        { url = "/api/hint"
-        , body = Http.jsonBody (encodeBoard board)
-        , expect = expectJson toMsg hintDecoder
-        }
-
-
-
--- JSON
---
--- Elm não converte JSON em valores "magicamente". Escrevemos DECODERS, que
--- descrevem a forma esperada do JSON. Se o JSON vier diferente, a decodificação
--- falha com uma mensagem de erro, em vez de gerar um valor inválido.
-
-
-{-| Envia `{"board": [[5,3,0,...], ...]}`.
--}
-encodeBoard : Board -> Encode.Value
-encodeBoard board =
-    Encode.object
-        [ ( "board", Encode.list (Encode.list Encode.int) (Sudoku.toLists board) ) ]
-
-
-{-| Lê `{"board": [[...], ...]}`. Decoders se combinam como peças de Lego:
-`Decode.list (Decode.list Decode.int)` é "uma lista de listas de inteiros".
--}
-boardDecoder : Decoder Board
-boardDecoder =
-    Decode.field "board" (Decode.list (Decode.list Decode.int))
-        |> Decode.map Sudoku.fromLists
-
-
-{-| `Decode.map3` junta três decoders e passa os três resultados para a
-função `Hint` (o construtor do record).
--}
-hintDecoder : Decoder Hint
-hintDecoder =
-    Decode.map3 Hint
-        (Decode.field "row" Decode.int)
-        (Decode.field "col" Decode.int)
-        (Decode.field "value" Decode.int)
-
-
-
--- MESA DA BCE: REQUISIÇÕES
---
--- Como as do Sudoku, todas recebem `toMsg` e entregam um `Result String a`:
--- em caso de erro, a mensagem já vem pronta para a tela.
+-- mensagem. `Result String a` é: ou `Ok valor`, ou `Err mensagemDeErro`; em
+-- caso de erro, a mensagem já vem pronta para a tela.
 
 
 type Dificuldade
@@ -209,7 +85,7 @@ dificuldadeParaTexto dificuldade =
 -}
 novaFase : Dificuldade -> (Result String Fase -> msg) -> Cmd msg
 novaFase dificuldade toMsg =
-    postBce "/api/fase/nova"
+    postJson "/api/fase/nova"
         [ ( "dificuldade", Encode.string (dificuldadeParaTexto dificuldade) ) ]
         faseDecoder
         toMsg
@@ -220,14 +96,14 @@ e para quando o jogador levanta um amigo.
 -}
 estado : Fase -> List Lugar -> (Result String Estado -> msg) -> Cmd msg
 estado fase sentados toMsg =
-    postBce "/api/fase/estado" (encodePedido fase sentados) estadoDecoder toMsg
+    postJson "/api/fase/estado" (encodePedido fase sentados) estadoDecoder toMsg
 
 
 {-| Senta `lugar.amigo` em `lugar.posicao` e devolve o estado depois disso.
 -}
 jogada : Fase -> List Lugar -> Lugar -> (Result String Estado -> msg) -> Cmd msg
 jogada fase sentados lugar toMsg =
-    postBce "/api/fase/jogada"
+    postJson "/api/fase/jogada"
         (encodePedido fase sentados ++ camposDoLugar lugar)
         estadoDecoder
         toMsg
@@ -235,20 +111,20 @@ jogada fase sentados lugar toMsg =
 
 dica : Fase -> List Lugar -> (Result String Dica -> msg) -> Cmd msg
 dica fase sentados toMsg =
-    postBce "/api/fase/dica" (encodePedido fase sentados) dicaDecoder toMsg
+    postJson "/api/fase/dica" (encodePedido fase sentados) dicaDecoder toMsg
 
 
 {-| O estado com todo mundo sentado, a partir de quem já está sentado.
 -}
 resolver : Fase -> List Lugar -> (Result String Estado -> msg) -> Cmd msg
 resolver fase sentados toMsg =
-    postBce "/api/fase/resolver" (encodePedido fase sentados) estadoDecoder toMsg
+    postJson "/api/fase/resolver" (encodePedido fase sentados) estadoDecoder toMsg
 
 
-{-| Todas as rotas da BCE são `POST` com um objeto JSON no corpo.
+{-| Todas as rotas são `POST` com um objeto JSON no corpo.
 -}
-postBce : String -> List ( String, Encode.Value ) -> Decoder a -> (Result String a -> msg) -> Cmd msg
-postBce url campos decoder toMsg =
+postJson : String -> List ( String, Encode.Value ) -> Decoder a -> (Result String a -> msg) -> Cmd msg
+postJson url campos decoder toMsg =
     Http.post
         { url = url
         , body = Http.jsonBody (Encode.object campos)
@@ -257,7 +133,12 @@ postBce url campos decoder toMsg =
 
 
 
--- MESA DA BCE: JSON PARA OS TIPOS DO Bce.elm
+-- JSON PARA OS TIPOS DO Bce.elm
+--
+-- Elm não converte JSON em valores "magicamente". Escrevemos DECODERS, que
+-- descrevem a forma esperada do JSON. Se o JSON vier diferente, a
+-- decodificação falha com uma mensagem de erro, em vez de gerar um valor
+-- inválido.
 --
 -- O formato do JSON está em docs/API.md. Cada decoder FALHA quando recebe um
 -- valor que não existe no jogo (amigo, objeto, mania ou status desconhecido),
@@ -425,7 +306,7 @@ deResult resultado =
 
 
 
--- MESA DA BCE: TIPOS PARA JSON
+-- DOS TIPOS DO Bce.elm PARA JSON
 
 
 {-| O corpo comum das rotas de estado, dica e resolver:

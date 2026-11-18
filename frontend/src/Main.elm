@@ -369,7 +369,7 @@ view model =
             [ div [ class "app-container bce-layout", attribute "aria-busy" (boolText model.aguardando) ]
                 [ section [ class "bce-toolbar", attribute "aria-label" "Nova fase" ]
                     [ h2 [] [ text "Nova fase" ]
-                    , div [ class "difficulty-picker" ]
+                    , div [ class "bce-niveis" ]
                         (List.map (viewDificuldade model) [ Facil, Medio, Dificil ])
                     ]
                 , viewTela model
@@ -393,8 +393,8 @@ viewDificuldade model dificuldade =
                     False
     in
     button
-        [ class "difficulty-option"
-        , classList [ ( "difficulty-option--active", ativa ) ]
+        [ class "bce-nivel"
+        , classList [ ( "bce-nivel--ativo", ativa ) ]
         , disabled model.aguardando
         , onClick (AcaoJogo (NovaFase dificuldade))
         ]
