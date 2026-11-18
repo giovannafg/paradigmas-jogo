@@ -34,30 +34,25 @@
 
 | Nome completo | Matrícula | Turma (14h/16h) | Usuário GitHub |
 |---------------|-----------|-----------------|----------------|
-| [Nome]        | [000000]  | [14h]           | [@usuario]     |
-| [Nome]        | [000000]  | [16h]           | [@usuario]     |
-| [Nome]        | [000000]  | [14h]           | [@usuario]     |
-| [Nome]        | [000000]  | [16h]           | [@usuario]     |
-| [Nome]        | [000000]  | [14h]           | [@usuario]     |
+| Arthur Ribeiro e Sousa  | 221007850  | 14h           | @artrsousa1     |
+| Felipe Lopes Pedroza        | 231026330  | 14h           | @darkymeubem     |
+| Gabriel Dantas Bevilaqua Mendes    | 231038072  | 14h           | @gbevi     |
+|  Gabriel Henrique Castelo Costa       | 221008051  | 14h           | @GabrielCastelo-31    |
+| Giovanna Felipe Guimarães        | 241038998 | 14h           | @giovannafg     |
+| João Victor Felix Moreira   | 231037709  | 14h           | @joaofmoreiraa     |
+| Mayara Marques Silva    | 231035731  | 14h           | @maymarquee     |
 
 - **Nome do projeto:** Mesa da BCE
-- **Nome do grupo:** [um nome criativo, que não se repita na turma]
-  <!--
-    O nome do grupo identifica vocês nas planilhas de notas e na chamada
-    para a apresentação. Não dá para validar se é único, então caprichem:
-    "Grupo 3" vai colidir com o "Grupo 3" da outra turma.
-  -->
-- **Repositório:** [https://github.com/...]
+- **Nome do grupo:** Os Sem Agenda
+
+- **Repositório:** [https://github.com/giovannafg/paradigmas-jogo](https://github.com/giovannafg/paradigmas-jogo)
 - **Commit ou tag entregue:** [`a1b2c3d` ou `v1.0`]
   <!--
     O avaliador vai olhar exatamente esta versão. Para criar uma tag:
       git tag v1.0 && git push origin v1.0
   -->
-- **Ponto de partida:** [template do Sudoku com ajustes | variante do Sudoku | outro jogo conhecido | remix original | jogo inventado]
-  <!--
-    Escolha UMA faixa. Ela define o ajuste de escopo da nota do grupo
-    (AVALIACAO.md, seção 1.5). O professor confirma a faixa na apresentação.
-  -->
+- **Ponto de partida:** jogo inventado
+
 - **Slides da apresentação oral:** [`docs/apresentacao.pdf` | link externo | não há]
   <!--
     No final do semestre, cada grupo faz uma apresentação oral de 15
@@ -72,7 +67,7 @@
   Prolog resolve nele. Quem ler só esta seção deve entender o projeto.
 -->
 
-[Resumo do projeto.]
+A Mesa da BCE é um quebra-cabeça de lógica para o navegador: os integrantes do grupo vão estudar juntos numa mesa da Biblioteca Central e o jogador precisa sentar cada um numa cadeira de modo que todas as manias sejam respeitadas ao mesmo tempo. O Prolog é o cérebro do jogo enquanto o Elm desenha a mesa e controla a partida. O Python só faz a ponte HTTP entre os dois. As regras completas estão em `docs/REGRAS.md`.
 
 ![Captura de tela do sistema](docs/captura.png)
 <!-- Uma ou duas capturas de tela da interface. Crie a pasta docs/ se precisar. -->
@@ -87,23 +82,59 @@
 
 **Requisitos** (com as versões que o grupo usou):
 
-- SWI-Prolog [9.x]
-- Node.js [2x.x]
-- [uv / Python 3.x, se usar]
+- SWI-Prolog 10.0.2 (qualquer 9.2 ou mais novo serve; o `swipl` precisa estar no PATH)
+- Node.js 24.14 com `npm` (20 ou mais novo serve); o compilador do Elm 0.19.2 e o `elm-test` são instalados pelo `npm`, sem nada global
+- uv 0.11, que instala sozinho o Python 3.14 do backend
 
 **Instalação e execução:**
 
 ```sh
-[comandos exatos, na ordem]
+git clone https://github.com/giovannafg/paradigmas-jogo.git
+cd paradigmas-jogo
+make install    # uma vez só: uv sync no backend e npm install no frontend
+make dev        # sobe backend (porta 8000) e frontend (porta 5173)
+```
+
+Depois, abra http://localhost:5173, escolha a dificuldade e clique em
+**Nova fase**. A documentação interativa da API fica em
+http://localhost:8000/docs.
+
+Sem `make` (comum no Windows), use dois terminais:
+
+```sh
+# terminal 1
+cd backend
+uv sync
+uv run fastapi dev app/main.py
+
+# terminal 2
+cd frontend
+npm install
+npm run dev
+```
+
+Para brincar só com o Prolog, sem o resto do sistema:
+
+```sh
+swipl backend/prolog/bce.pl
+?- generate(facil, Mesa, Amigos, Sentados), solve(Mesa, Amigos, Sentados, S).
 ```
 
 **Testes:**
 
 ```sh
-[comando para rodar os testes, se houver]
+make test       # roda os três grupos abaixo
 ```
 
-**Testado em:** [Linux / Windows / macOS, navegador]
+ou, separadamente:
+
+```sh
+swipl -g run_tests -t halt backend/prolog/test_bce.pl   # plunit (Prolog)
+cd backend && uv run pytest                             # rotas da API
+cd frontend && npx elm-test                             # Elm
+```
+
+**Testado em:** Windows 11, macOS 27.0.1 e Ubuntu 26.04.1.
 
 ## 4. Arquitetura
 
@@ -113,14 +144,30 @@
 -->
 
 ```
-[Elm] --HTTP/JSON--> [Python] --janus--> [Prolog]
+┌──────────────────────┐   HTTP/JSON   ┌───────────────────┐  janus  ┌───────────────────────┐
+│ Navegador            │ ────────────▶ │ FastAPI (Python)  │ ──────▶ │ SWI-Prolog            │
+│ Elm + daisyUI (Vite) │ ◀──────────── │ backend/app/      │ ◀────── │ bce_api.pl ──▶ bce.pl │
+└──────────────────────┘               └───────────────────┘         └───────────────────────┘
+  estado da partida e tela            só repassa e valida o           regras, gerador,
+                                      formato do JSON                 resolvedor e dica
 ```
+
+O fluxo de uma jogada: o jogador clica num amigo e numa cadeira; o
+`Main.elm` faz um `POST /api/fase/jogada` pelo `Api.elm`; o `main.py`
+valida o formato com Pydantic e chama o `bce_api.pl` pelo janus; o
+`bce_api.pl` converte as strings em átomos e no termo `mesa/3` e pergunta
+ao `bce.pl` se a jogada vale e como fica cada mania; a resposta volta como
+JSON e o Elm redesenha a mesa com ✅ e ❌.
 
 | Parte  | Responsabilidade | Arquivos principais |
 |--------|------------------|---------------------|
-| Prolog | [...]            | [`backend/prolog/...`] |
-| Elm    | [...]            | [`frontend/src/...`]   |
-| Python | [só integração]  | [`backend/app/...`]    |
+| Prolog | Toda a regra do jogo: manias como fatos, tradução em restrições CLP(FD), validação de estados e jogadas, status das manias, vitória, gerador com solução única, resolvedor e dica | `backend/prolog/bce.pl`, `backend/prolog/bce_api.pl` (tradução JSON ↔ termos), `backend/prolog/test_bce.pl` |
+| Elm    | Estado da partida (seleção, dicas usadas, estrelas, erros), desenho da mesa e dos cards, chamadas HTTP e conversão do JSON em tipos do domínio | `frontend/src/Main.elm` (Model, update, view), `frontend/src/Bce.elm` (tipos do domínio), `frontend/src/Api.elm` (HTTP e JSON) |
+| Python | Só integração: expõe os predicados como rotas HTTP e recusa JSON fora do formato antes de chamar o Prolog | `backend/app/main.py`, `backend/app/prolog.py` |
+
+O visual fica em `frontend/src/style.css`. Os arquivos do Sudoku
+(`sudoku.pl`, `Sudoku.elm` e as rotas `/api/generate`, `/api/solve` e
+`/api/hint`) vieram do template e não fazem parte do jogo.
 
 ## 5. Parte em Prolog
 
