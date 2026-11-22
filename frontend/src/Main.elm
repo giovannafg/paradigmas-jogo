@@ -3,9 +3,11 @@ module Main exposing (Acao(..), Consulta(..), Desfecho(..), Msg(..), Tela(..), i
 import Api exposing (Dificuldade(..), Estado)
 import Bce exposing (Amigo, Dica, Estrelas(..), Fase, Objeto(..), Posicao, Rodada(..), Selecao(..), StatusMania(..))
 import Browser
-import Html exposing (Html, button, div, h1, h2, header, input, label, main_, p, section, span, text)
-import Html.Attributes exposing (attribute, checked, class, classList, disabled, id, style, type_, value)
+import Browser.Dom
+import Html exposing (Html, button, div, h1, h2, header, img, input, label, main_, p, section, span, text)
+import Html.Attributes exposing (attribute, checked, class, classList, disabled, id, src, alt, title, style, type_, value)
 import Html.Events exposing (onCheck, onClick)
+import Task
 
 
 type alias Flags =
@@ -33,6 +35,7 @@ type alias Partida =
     , desfecho : Desfecho
     , dica : Maybe Dica
     , dicasUsadas : Int
+    , conflitoRecente : Maybe Posicao
     , erro : Maybe String
     , aviso : Maybe String
     }
@@ -57,7 +60,7 @@ A consulta identifica a transição que o servidor confirmou.
 -}
 type Consulta
     = FaseNova Dificuldade Fase
-    | Jogada
+    | Jogada Amigo Posicao
     | Levantada Amigo Selecao
     | Reinicio
     | Solucao
@@ -69,6 +72,9 @@ type Msg
     | RecebeuEstado Consulta (Result String Estado)
     | RecebeuDica (Result String Dica)
     | TemaAlterado Bool
+    | DescerPersonagens
+    | RecebeuPosicaoPersonagens (Result Browser.Dom.Error Browser.Dom.Viewport)
+    | RolagemConcluida
 
 
 main : Program Flags Model Msg
@@ -129,6 +135,30 @@ update msg model =
 
         TemaAlterado darkTheme ->
             ( { model | darkTheme = darkTheme }, Cmd.none )
+
+        DescerPersonagens ->
+            ( model, Task.attempt RecebeuPosicaoPersonagens (Browser.Dom.getViewportOf "bce-personagens-scroll") )
+
+        RecebeuPosicaoPersonagens resultado ->
+            case resultado of
+                Ok viewport ->
+                    let
+                        limite =
+                            max 0 (viewport.scene.height - viewport.viewport.height)
+
+                        destino =
+                            min limite (viewport.viewport.y + viewport.viewport.height * 0.75)
+                    in
+                    ( model
+                    , Task.attempt (\_ -> RolagemConcluida)
+                        (Browser.Dom.setViewportOf "bce-personagens-scroll" viewport.viewport.x destino)
+                    )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
+        RolagemConcluida ->
+            ( model, Cmd.none )
 
 
 executar : Acao -> Model -> ( Model, Cmd Msg )
@@ -221,7 +251,7 @@ ativarCadeira posicao model partida =
                     case Bce.sentar partida.fase sentados amigo posicao of
                         Ok _ ->
                             iniciar
-                                (Api.jogada partida.fase sentados (Bce.Lugar amigo posicao) (RecebeuEstado Jogada))
+                                (Api.jogada partida.fase sentados (Bce.Lugar amigo posicao) (RecebeuEstado (Jogada amigo posicao)))
                                 model
 
                         Err recusa ->
@@ -284,8 +314,29 @@ aplicarEstado consulta estado tela =
         Reinicio ->
             mapPartida (\partida -> novaPartida partida.dificuldade partida.fase estado) tela
 
-        Jogada ->
-            mapPartida (aplicarJogada estado Nothing) tela
+        Jogada _ posicao ->
+            mapPartida
+                (\partida ->
+                    let
+                        violacoesAnteriores =
+                            Bce.conflitos partida.estado.status
+
+                        novasViolacoes =
+                            Bce.conflitos estado.status
+                                |> List.filter (\amigo -> not (List.member amigo violacoesAnteriores))
+
+                        partidaAtualizada =
+                            aplicarJogada estado Nothing partida
+                    in
+                    { partidaAtualizada
+                        | conflitoRecente =
+                            if List.isEmpty novasViolacoes then
+                                Nothing
+                            else
+                                Just posicao
+                    }
+                )
+                tela
 
         Levantada levantado selecao ->
             mapPartida (aplicarJogada estado (avisoAoLevantar levantado selecao)) tela
@@ -293,7 +344,7 @@ aplicarEstado consulta estado tela =
         Solucao ->
             mapPartida
                 (\partida ->
-                    { partida | estado = estado, selecao = NadaSelecionado, desfecho = Resolvida, dica = Nothing, erro = Nothing, aviso = Nothing }
+                    { partida | estado = estado, selecao = NadaSelecionado, desfecho = Resolvida, dica = Nothing, conflitoRecente = Nothing, erro = Nothing, aviso = Nothing }
                 )
                 tela
 
@@ -305,6 +356,7 @@ aplicarJogada estado aviso partida =
         , selecao = NadaSelecionado
         , desfecho = Rodada (rodada estado partida.dicasUsadas)
         , dica = Nothing
+        , conflitoRecente = Nothing
         , erro = Nothing
         , aviso = aviso
     }
@@ -338,6 +390,7 @@ novaPartida dificuldade fase estado =
     , desfecho = Rodada (rodada estado 0)
     , dica = Nothing
     , dicasUsadas = 0
+    , conflitoRecente = Nothing
     , erro = Nothing
     , aviso = Nothing
     }
@@ -354,28 +407,64 @@ rodada estado dicas =
 
 view : Model -> Html Msg
 view model =
-    div [ class "app" ]
-        [ header [ class "app-header" ]
-            [ div [ class "app-container app-header-content" ]
-                [ h1 [ class "app-title" ] [ text "Mesa da BCE" ]
-                , label [ class "theme-toggle", attribute "aria-label" "Alternar tema escuro" ]
-                    [ input [ type_ "checkbox", class "theme-controller", value "dark", checked model.darkTheme, onCheck TemaAlterado ] []
-                    , span [ class "swap-off", attribute "aria-hidden" "true" ] [ text "☀" ]
-                    , span [ class "swap-on", attribute "aria-hidden" "true" ] [ text "☾" ]
+    div [ classList [ ( "pixel-game", True ), ( "is-dark", model.darkTheme ) ] ]
+        [ div [ class "game-shell" ]
+            [ header [ class "game-header" ]
+                [ img [ class "game-logo", src (sprite (if model.darkTheme then "logo-escuro" else "logo-claro")), alt "Mesa da BCE" ] []
+                , label
+                    [ class "theme-toggle"
+                    , title (if model.darkTheme then "Ativar modo claro" else "Ativar modo noturno")
+                    ]
+                    [ input
+                        [ type_ "checkbox"
+                        , class "theme-controller"
+                        , checked model.darkTheme
+                        , attribute "aria-label" (if model.darkTheme then "Ativar modo claro" else "Ativar modo noturno")
+                        , onCheck TemaAlterado
+                        ]
+                        []
+                    , img
+                        [ src (sprite (if model.darkTheme then "modo-claro" else "modo-noturno"))
+                        , alt ""
+                        , attribute "aria-hidden" "true"
+                        ]
+                        []
                     ]
                 ]
-            ]
-        , main_ [ class "app-main" ]
-            [ div [ class "app-container bce-layout", attribute "aria-busy" (boolText model.aguardando) ]
-                [ section [ class "bce-toolbar", attribute "aria-label" "Nova fase" ]
-                    [ h2 [] [ text "Nova fase" ]
-                    , div [ class "bce-niveis" ]
-                        (List.map (viewDificuldade model) [ Facil, Medio, Dificil ])
-                    ]
-                , viewTela model
-                ]
+            , main_ [ class "game-main", attribute "aria-busy" (boolText model.aguardando) ]
+                [ viewTela model ]
             ]
         ]
+
+
+sprite : String -> String
+sprite name =
+    "/sprites/" ++ name ++ ".svg"
+
+
+amigoSprite : Amigo -> String
+amigoSprite amigo =
+    case amigo of
+        Bce.Arthur -> "arthur"
+        Bce.Bevi -> "bevi"
+        Bce.Felipe -> "felipe"
+        Bce.Gabriel -> "gabriel"
+        Bce.Giovanna -> "giovanna"
+        Bce.Joao -> "joao"
+        Bce.Mayara -> "mayara"
+
+
+classeGrid : Dificuldade -> String
+classeGrid dificuldade =
+    case dificuldade of
+        Facil ->
+            "desk-grid--facil"
+
+        Medio ->
+            "desk-grid--medio"
+
+        Dificil ->
+            "desk-grid--dificil"
 
 
 viewDificuldade : Model -> Dificuldade -> Html Msg
@@ -383,14 +472,8 @@ viewDificuldade model dificuldade =
     let
         ativa =
             case model.tela of
-                PartidaAberta partida ->
-                    partida.dificuldade == dificuldade
-
-                Inicio ->
-                    False
-
-                FalhaInicial _ ->
-                    False
+                PartidaAberta partida -> partida.dificuldade == dificuldade
+                _ -> False
     in
     button
         [ class "bce-nivel"
@@ -408,82 +491,115 @@ viewTela model =
             p [ attribute "role" "status" ] [ text "Carregando fase…" ]
 
         FalhaInicial erro ->
-            viewErro erro
+            div [ class "game-error" ]
+                [ viewErro erro
+                , button [ onClick (AcaoJogo (NovaFase Facil)) ] [ text "Tentar novamente" ]
+                ]
 
         PartidaAberta partida ->
             let
                 jogavel =
                     not model.aguardando && partida.desfecho == Rodada Jogando
             in
-            div [ class "bce-layout" ]
-                [ div [ class "bce-acoes" ]
-                    [ viewAcao "Dica" PedirDica (not jogavel || partida.dica /= Nothing)
-                    , viewAcao "Resolver" Resolver (not jogavel)
-                    , viewAcao "Recomeçar" Recomecar model.aguardando
-                    ]
-                , viewMensagens model.aguardando partida
-                , div [ class "bce-partida" ]
-                    [ section [ attribute "aria-labelledby" "amigos-titulo" ]
-                        [ h2 [ id "amigos-titulo" ] [ text "Amigos" ]
-                        , p [ class "bce-instrucao" ] [ text "Selecione um amigo e escolha uma cadeira livre. Para levantar alguém, ative a cadeira dele." ]
-                        , div [ class "bce-amigos" ]
-                            (List.map (viewAmigo jogavel partida) partida.fase.amigos)
+            div [ class "game-content" ]
+                [ section [ class "characters", attribute "aria-label" "Personagens e regras" ]
+                    [ div [ class "characters-scroll", id "bce-personagens-scroll" ]
+                        (List.map (viewAmigo jogavel partida) partida.fase.amigos)
+                    , button
+                        [ type_ "button"
+                        , class "scroll-indicator"
+                        , title "Ver mais personagens"
+                        , attribute "aria-label" "Rolar a lista de personagens para baixo"
+                        , onClick DescerPersonagens
                         ]
-                    , section [ attribute "aria-labelledby" "mesa-titulo" ]
-                        [ h2 [ id "mesa-titulo" ] [ text "Mesa" ]
-                        , div
-                            [ class "bce-mesa"
-                            , style "--bce-colunas" (String.fromInt partida.fase.colunas)
+                        [ text "▼" ]
+                    ]
+                , section [ class "board-area", attribute "aria-label" "Tabuleiro do jogo" ]
+                    [ div [ class "levels" ] (List.map (viewDificuldade model) [ Facil, Medio, Dificil ])
+                    , div [ class "game-actions" ]
+                        [ viewIconAcao "Dica" "dica" PedirDica (not jogavel || partida.dica /= Nothing)
+                        , viewIconAcao "Resolver" "resolver" Resolver (not jogavel)
+                        , viewIconAcao "Recomeçar" "recomecar" Recomecar model.aguardando
+                        ]
+                    , viewMensagens model.aguardando partida
+                    , div [ class "classroom-layout" ]
+                        [ div
+                            [ class ("desk-grid " ++ classeGrid partida.dificuldade)
+                            , style "display" "flex"
+                            , style "flex-direction" "column"
                             ]
-                            (List.map (viewCadeira jogavel partida) (Bce.posicoes partida.fase))
+                            (List.range 0 (partida.fase.linhas - 1)
+                                |> List.map (viewLinhaMesas jogavel partida)
+                            )
                         ]
                     ]
                 ]
 
 
-viewAcao : String -> Acao -> Bool -> Html Msg
-viewAcao rotulo acao bloqueada =
-    button [ class "btn", disabled bloqueada, onClick (AcaoJogo acao) ] [ text rotulo ]
+viewIconAcao : String -> String -> Acao -> Bool -> Html Msg
+viewIconAcao rotulo icone acao bloqueada =
+    button
+        [ type_ "button", class "icon-action", title rotulo, attribute "aria-label" rotulo
+        , disabled bloqueada, onClick (AcaoJogo acao)
+        ]
+        [ img [ src (sprite icone), alt rotulo ] [] ]
 
 
 viewMensagens : Bool -> Partida -> Html Msg
 viewMensagens aguardando partida =
-    div []
+    div [ class "game-messages", attribute "aria-live" "polite" ]
         [ case partida.erro of
-            Just erro ->
-                viewErro erro
-
-            Nothing ->
-                text ""
+            Just erro -> viewErro erro
+            Nothing -> text ""
         , case partida.aviso of
-            Just aviso ->
-                p [ class "message message--info", attribute "role" "status" ] [ text aviso ]
-
-            Nothing ->
-                text ""
-        , p [ attribute "role" "status" ]
+            Just aviso -> p [ class "message message--info" ] [ text aviso ]
+            Nothing -> text ""
+        , viewConflitos partida
+        , p [ class "game-status", attribute "role" "status" ]
             [ text
                 (if aguardando then
                     "O Prolog está pensando…"
-
                  else
                     case partida.desfecho of
                         Rodada Jogando ->
                             case partida.dica of
-                                Just dica ->
-                                    Bce.explicarDica dica
-
-                                Nothing ->
-                                    ""
-
-                        Rodada (Venceu estrelas) ->
-                            "Você venceu! " ++ textoEstrelas estrelas
-
-                        Resolvida ->
-                            "Resolvido com ajuda"
+                                Just dica -> Bce.explicarDica dica
+                                Nothing -> ""
+                        Rodada (Venceu estrelas) -> "Você venceu! " ++ textoEstrelas estrelas
+                        Resolvida -> "Resolvido com ajuda"
                 )
             ]
         ]
+
+
+{-| O backend avalia as manias: somente status Violada é um conflito
+confirmado. Pendente não deve receber destaque vermelho, pois ainda
+faltam amigos para avaliar a regra.
+-}
+viewConflitos : Partida -> Html Msg
+viewConflitos partida =
+    let
+        violados =
+            Bce.conflitos partida.estado.status
+
+        regrasVioladas =
+            partida.fase.manias
+                |> List.filter (\regra -> List.member regra.dono violados)
+    in
+    if List.isEmpty regrasVioladas then
+        text ""
+
+    else
+        div [ class "game-conflicts", attribute "role" "alert" ]
+            (p [ class "game-conflicts-title" ]
+                [ text "✕ Há uma regra que não está sendo respeitada:" ]
+                :: List.map
+                    (\regra ->
+                        p [ class "game-conflicts-reason" ]
+                            [ text (Bce.descreverMania regra) ]
+                    )
+                    regrasVioladas
+            )
 
 
 viewErro : String -> Html Msg
@@ -496,46 +612,68 @@ viewAmigo jogavel partida amigo =
     let
         sentado =
             not (List.member amigo (Bce.semAssento partida.fase partida.estado.sentados))
-
         status =
             Bce.statusDe partida.estado.status amigo
-
         selecionado =
             partida.selecao == AmigoSelecionado amigo
-
         manias =
             partida.fase.manias
                 |> List.filter (\regra -> regra.dono == amigo)
-                |> List.map (Bce.descreverMania >> text >> List.singleton >> span [ class "bce-mania" ])
-
+                |> List.map (\regra -> p [ class "character-rule" ] [ text (Bce.descreverMania regra) ])
         conteudo =
-            [ span [ class "bce-nome" ] [ text (Bce.nomeDoAmigo amigo) ]
-            , span [] [ text (textoStatus status) ]
-            ]
-                ++ manias
-
+            [ img [ class "character-image", src (sprite (amigoSprite amigo)), alt (Bce.nomeDoAmigo amigo) ] []
+            , span [ class "character-name" ] [ text (Bce.nomeDoAmigo amigo) ]
+            ] ++ manias
         classes =
-            [ class "bce-card"
+            [ class "character-card"
             , classList
                 [ ( "bce-selecionado", selecionado )
                 , ( "bce-conflito", status == Violada )
                 , ( "bce-destaque", Maybe.map .amigo partida.dica == Just amigo )
+                , ( "is-seated", sentado )
                 ]
             ]
     in
     if sentado then
-        div classes (conteudo ++ [ span [] [ text "Sentado" ] ])
-
+        div (classes ++ [ title "Personagem sentado" ]) conteudo
     else
         button
-            (classes
-                ++ [ type_ "button"
-                   , disabled (not jogavel)
-                   , attribute "aria-pressed" (boolText selecionado)
-                   , onClick (AcaoJogo (Selecionar amigo))
-                   ]
-            )
+            (classes ++ [ type_ "button", disabled (not jogavel), attribute "aria-pressed" (boolText selecionado), onClick (AcaoJogo (Selecionar amigo)) ])
             conteudo
+
+
+{-| Renderizar cada linha explicitamente impede que as cadeiras fiquem
+empilhadas em uma única coluna, inclusive se outra regra CSS modificar
+o container. As coordenadas seguem a matriz fornecida pelo backend.
+-}
+viewLinhaMesas : Bool -> Partida -> Int -> Html Msg
+viewLinhaMesas jogavel partida linha =
+    div
+        [ class "desk-row"
+        , style "display" "flex"
+        , style "flex-direction" "row"
+        , style "flex-wrap" "nowrap"
+        ]
+        ((List.range 0 (partida.fase.colunas - 1)
+            |> List.map
+                (\coluna ->
+                    viewCadeira jogavel partida { linha = linha, coluna = coluna }
+                )
+         )
+            ++ (if linha == 0 then
+                    [ img
+                        [ class "door-marker"
+                        , src (sprite "marcador-porta")
+                        , alt ""
+                        , attribute "aria-hidden" "true"
+                        ]
+                        []
+                    ]
+
+                else
+                    []
+               )
+        )
 
 
 viewCadeira : Bool -> Partida -> Posicao -> Html Msg
@@ -543,50 +681,59 @@ viewCadeira jogavel partida posicao =
     let
         fixo =
             List.any (\lugar -> lugar.posicao == posicao) partida.fase.fixos
-
         ocupante =
             Bce.ocupante partida.estado.sentados posicao
-
-        conteudo =
-            case ocupante of
-                Just amigo ->
-                    if fixo then
-                        Bce.nomeDoAmigo amigo ++ " · fixo"
-
-                    else
-                        Bce.nomeDoAmigo amigo
-
-                Nothing ->
-                    "Livre"
-
         objeto =
             Bce.objetoEm partida.fase posicao
-                |> Maybe.map textoObjeto
-                |> Maybe.withDefault ""
+        spriteMesa =
+            case ocupante of
+                Just amigo ->
+                    case objeto of
+                        Just Tomada ->
+                            amigoSprite amigo ++ "-mesa-tomada"
 
+                        _ ->
+                            amigoSprite amigo ++ "-mesa"
+
+                Nothing ->
+                    case objeto of
+                        Just Tomada -> "tomada"
+                        Just Porta -> "mesa"
+                        _ -> "mesa"
+        conteudo =
+            case ocupante of
+                Just amigo -> Bce.nomeDoAmigo amigo ++ (if fixo then " (fixo)" else "")
+                Nothing -> "Cadeira livre"
         coordenada =
-            "Linha "
-                ++ String.fromInt (posicao.linha + 1)
-                ++ ", coluna "
-                ++ String.fromInt (posicao.coluna + 1)
-
+            "Linha " ++ String.fromInt (posicao.linha + 1) ++ ", coluna " ++ String.fromInt (posicao.coluna + 1)
         rotulo =
-            String.join ", " (List.filter (not << String.isEmpty) [ coordenada, conteudo, objeto ])
+            String.join ", " [ coordenada, conteudo ]
+
+        regraViolada =
+            case ocupante of
+                Just amigo ->
+                    Bce.statusDe partida.estado.status amigo == Violada
+
+                Nothing ->
+                    False
+
+        destaqueErro =
+            regraViolada || (ocupante /= Nothing && partida.conflitoRecente == Just posicao)
     in
     button
-        [ type_ "button"
-        , class "bce-cadeira"
+        [ type_ "button", class "desk"
         , classList
             [ ( "bce-fixo", fixo )
             , ( "bce-destaque", Maybe.map .posicao partida.dica == Just posicao )
+            , ( "bce-conflito", destaqueErro )
+            , ( "desk-occupied", ocupante /= Nothing )
             ]
         , disabled (fixo || not jogavel || (ocupante == Nothing && partida.selecao == NadaSelecionado))
         , attribute "aria-label" rotulo
+        , title rotulo
         , onClick (AcaoJogo (AtivarCadeira posicao))
         ]
-        [ span [] [ text conteudo ]
-        , span [] [ text objeto ]
-        ]
+        [ img [ src (sprite spriteMesa), alt "" ] [] ]
 
 
 textoObjeto : Objeto -> String

@@ -1,529 +1,102 @@
-/* ==========================================================================
-   style.css: todo o visual da Mesa da BCE.
-
-   COMO ESTE ARQUIVO ESTÁ ORGANIZADO
-   ---------------------------------
-     1. Importações (Tailwind, daisyUI, fontes)
-     2. Temas de cores do daisyUI (claro e escuro)
-     3. Fontes do Tailwind (@theme)
-     4. VARIÁVEIS DE PERSONALIZAÇÃO  <- comece por aqui para mudar o estilo
-     5. Base: fundo da página, textura, seleção de texto
-     6. Componentes (classes semânticas usadas pelo Elm)
-     7. Acessibilidade
-
-   UTILITÁRIOS x CLASSES SEMÂNTICAS
-   --------------------------------
-   O Tailwind incentiva escrever o estilo direto no HTML com classes
-   utilitárias: `class "flex gap-2 p-4 rounded-xl bg-base-100"`. É rápido,
-   mas o código Elm fica cheio de detalhes visuais e difícil de ler.
-
-   Aqui fazemos o contrário: o Elm usa nomes que dizem O QUE o elemento é
-   (`bce-mesa`, `bce-cadeira`, `bce-card`), e este arquivo diz COMO ele
-   aparece.
-   Para não perder as vantagens do Tailwind, usamos `@apply`, que copia o
-   CSS de classes utilitárias para dentro de uma classe nossa:
-
-       .bce-acoes { @apply flex gap-2; }
-       ⇣ vira
-       .bce-acoes { display: flex; gap: 0.5rem; }
-
-   Também funciona com componentes do daisyUI: `@apply btn btn-primary`.
-
-   Nas partes mais elaboradas (gradientes, animações, seletores complexos),
-   escrevemos CSS puro, que é mais expressivo que qualquer utilitário.
-
-   CONVENÇÃO DE NOMES (BEM)
-   ------------------------
-   Usamos uma versão simplificada do BEM (Bloco, Elemento, Modificador):
-
-       .bce-nivel          bloco: um botão de dificuldade
-       .bce-nivel--ativo   modificador: uma VARIAÇÃO do bloco (dois hífens)
-       .app-header         elemento/parte de um bloco maior (um hífen)
-
-   O Elm liga e desliga modificadores com `classList`.
-
-   CSS ANINHADO (nesting)
-   ----------------------
-   O CSS moderno aceita regras dentro de regras. `&` representa o seletor
-   de fora:
-
-       .bce-nivel {
-         color: black;
-         &:hover { color: red; }         -> .bce-nivel:hover
-         &.bce-nivel--ativo { ... }      -> .bce-nivel.bce-nivel--ativo
-       }
-   ========================================================================== */
-
-
-/* ==========================================================================
-   1. IMPORTAÇÕES
-   ========================================================================== */
-
 @import "tailwindcss";
+@import "@fontsource-variable/outfit";
 
-/* Fontes "auto-hospedadas": os arquivos vêm do npm (pacotes @fontsource) e
-   são servidos junto com o site. Não dependem do Google Fonts nem de
-   internet. Para trocar uma fonte, veja https://fontsource.org, rode
-   `npm install @fontsource-variable/NOME` e troque a linha abaixo.
+:root { font-family: "Courier New", monospace; font-synthesis: none; }
+* { box-sizing: border-box; }
+html, body, #app { min-height: 100%; margin: 0; }
+body { margin: 0; }
+button { font: inherit; }
+.pixel-game { --ink: #2e3079; --background: #ededed; --body-text: #111; --accent: #ff6139; --message-bg: #ffffffcc; min-height: 100vh; color: var(--ink); background: var(--background); transition: background .2s, color .2s; }
+.pixel-game.is-dark { --ink: #eeeef2; --background: #151538; --body-text: #fafafa; --message-bg: #242452; }
+.game-shell { max-width: 1180px; min-height: 100vh; margin: auto; padding: 44px 32px 30px; }
+.game-header { position: relative; display: flex; justify-content: center; align-items: start; height: 205px; }
+.game-logo { width: clamp(270px, 33vw, 405px); height: 160px; object-fit: contain; }
+.theme-toggle { cursor: pointer; position: absolute; top: 18px; right: 4px; width: 48px; height: 48px; display: grid; place-items: center; z-index: 3; }
+.theme-toggle img { display: block; width: 34px; height: 34px; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
+.theme-controller { position: absolute; inset: 0; opacity: 0; margin: 0; width: 100%; height: 100%; cursor: pointer; z-index: 1; }
+.theme-toggle:has(input:focus-visible) { outline: 3px solid var(--ink); outline-offset: 3px; }
+.theme-toggle:hover img { transform: scale(1.1); }
+/* O controle nao tem fundo: o SVG da lua e azul no tema claro. */
+.theme-toggle { background: transparent; border-radius: 0; }
+.game-content { display: grid; grid-template-columns: 205px minmax(0, 1fr); gap: clamp(35px, 6vw, 115px); }
+.characters { min-width: 0; height: min(745px, calc(100vh - 270px)); min-height: 510px; display: flex; flex-direction: column; align-items: center; }
+.characters-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: none; width: 100%; padding: 0 9px 4px; }
+.characters-scroll::-webkit-scrollbar { display: none; }
+.character-card { color: var(--ink); border: 2px solid transparent; background: transparent; width: 100%; display: flex; flex-direction: column; align-items: center; text-align: center; margin: 0 0 22px; padding: 4px; cursor: pointer; }
+.character-card:disabled, .character-card.is-seated { cursor: default; opacity: .63; }
+.character-image { display: block; width: 86px; height: 106px; object-fit: contain; image-rendering: pixelated; }
+.character-name { font-family: "Courier New", monospace; font-size: 23px; line-height: 1; font-weight: 1000; letter-spacing: -1.6px; text-shadow: 1px 1px currentColor; margin-top: 4px; }
+.character-rule { font-family: "Outfit Variable", sans-serif; font-size: 14px; line-height: 1.45; font-weight: 800; color: var(--body-text); margin: 6px 0 0; }
+.character-card.bce-selecionado { border: 2px dashed #7970fe; border-radius: 10px; }
+.character-card.bce-conflito .character-name { color: #fc6c87; }
+.character-card.bce-destaque { outline: 3px dashed #ffcf00; outline-offset: 2px; }
+.scroll-indicator { margin-top: auto; flex-shrink: 0; text-align: center; font-size: 33px; line-height: 1; color: var(--ink); border: 0; background: transparent; padding: 2px 16px; cursor: pointer; }
+.scroll-indicator:hover { transform: translateY(2px); }
+.scroll-indicator:focus-visible { outline: 3px dashed #7871ff; outline-offset: 2px; }
+.board-area { min-width: 0; display: flex; align-items: center; flex-direction: column; }
+.levels { display: flex; gap: clamp(22px, 4vw, 54px); justify-content: center; margin: 25px 0 17px; }
+.bce-nivel { border: 0; background: none; color: var(--ink); font-family: "Courier New", monospace; font-size: clamp(25px, 2.6vw, 36px); font-weight: 1000; letter-spacing: -2px; cursor: pointer; padding: 5px 0; }
+.bce-nivel--ativo { text-decoration: none; }
+.bce-nivel:hover:not(:disabled), .bce-nivel:focus-visible { color: #ff6139; }
+.game-actions { display: flex; justify-content: center; gap: 17px; height: 49px; }
+.icon-action { width: 48px; height: 48px; padding: 2px; border: 0; cursor: pointer; background: none; }
+.icon-action img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.icon-action:disabled { opacity: .35; cursor: default; }
+.icon-action:hover:enabled { transform: translateY(-3px); }
+.game-messages { min-height: 28px; width: 100%; text-align: center; font-family: "Outfit Variable", sans-serif; font-size: 14px; font-weight: 700; }
+.game-status:empty { display: none; }
+.game-status { margin: 4px 0; }
+.message { padding: 8px; background: var(--message-bg); border-radius: 6px; margin: 5px 0; }
+.message--error { color: #fa496d; }
+.classroom-layout { display: flex; align-items: flex-start; gap: 10px; width: 100%; justify-content: center; margin-top: 9px; min-width: 0; overflow-x: auto; }
+/* Linhas reais na árvore Elm: a matriz não depende de auto-placement do CSS Grid. */
+.desk-grid { --desk-size: clamp(94px, 10vw, 130px); display: flex; flex-direction: column; align-items: center; gap: clamp(10px, 2vw, 27px); flex: 0 0 auto; margin: 0; }
+.desk-grid--facil { --desk-size: clamp(94px, 11vw, 138px); }
+.desk-grid--medio { --desk-size: clamp(90px, 10vw, 128px); }
+.desk-grid--dificil { --desk-size: clamp(82px, 8.5vw, 109px); }
+.desk-row { position: relative; display: flex; flex-direction: row; flex-wrap: nowrap; justify-content: center; align-items: flex-start; gap: clamp(12px, 2.5vw, 34px); flex: 0 0 auto; }
+.desk { position: relative; width: var(--desk-size); flex: 0 0 var(--desk-size); display: block; border: none; background: transparent; padding: 0; margin: 0; aspect-ratio: 147 / 193; min-width: 0; cursor: pointer; }
+.desk img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.desk:disabled { cursor: default; }
+.desk:hover:enabled { filter: drop-shadow(0 0 5px #7670ff); transform: translateY(-2px); }
 
-   Fontes "variáveis" permitem ajustar peso, largura etc. de forma contínua
-   (qualquer peso entre 100 e 900, por exemplo), com um único arquivo. */
-@import "@fontsource-variable/fraunces/full.css"; /* título */
-@import "@fontsource-variable/outfit";            /* interface e números */
-
-/* O Tailwind só gera as classes utilitárias que encontra no código-fonte. */
-@source "./**/*.elm";
-
-/* daisyUI com os temas embutidos `light` e `dark`. Logo abaixo (seção 2)
-   redefinimos as cores desses dois temas. Para experimentar outros temas
-   prontos (cupcake, synthwave, retro...), veja
-   https://daisyui.com/docs/themes/ */
-@plugin "daisyui" {
-  themes: light, dark;
+/* Erro visual no mesmo estilo do destaque de dica, mas em vermelho. */
+.desk.bce-conflito {
+  filter: drop-shadow(0 0 1px #ed3653)
+          drop-shadow(0 0 3px #ed3653)
+          drop-shadow(0 0 7px rgba(237, 54, 83, 0.9));
+}
+.game-conflicts {
+  color: #9f1831;
+  background: #fff1f3;
+  border: 2px dashed #df3751;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin: 6px auto 10px;
+  max-width: 620px;
+  text-align: left;
+  line-height: 1.45;
+}
+.game-conflicts-title { margin: 0 0 4px; font-weight: 900; }
+.game-conflicts-reason { margin: 2px 0; }
+.pixel-game.is-dark .game-conflicts {
+  color: #ffd4dd;
+  background: #381a36;
+  border-color: #ff5b7a;
+}
+.pixel-game.is-dark .desk.bce-conflito {
+  filter: drop-shadow(0 0 1px #ff5b7a)
+          drop-shadow(0 0 3px #ff5b7a)
+          drop-shadow(0 0 7px rgba(255, 91, 122, 0.95));
 }
 
-
-/* ==========================================================================
-   2. TEMAS DE CORES
-
-   Cada tema define as mesmas variáveis (--color-primary, --color-base-100,
-   ...). Todos os componentes usam essas variáveis, então trocar o tema troca
-   tudo de uma vez.
-
-   COMO O TEMA É ESCOLHIDO
-   O botão sol/lua do cabeçalho é um checkbox com a classe `theme-controller`
-   e `value="dark"`. O daisyUI gera uma regra assim:
-
-       :root:has(input.theme-controller[value=dark]:checked) { ... }
-
-   Ou seja: "se a página contém esse checkbox marcado, use o tema escuro".
-   A troca de tema acontece só com CSS; o Elm apenas desenha o checkbox.
-   Na primeira visita, o main.js marca o checkbox se o sistema operacional
-   estiver em modo escuro, e depois lembra a escolha do jogador.
-
-   Os nomes `light` e `dark` são os dos temas embutidos do daisyUI. Usando o
-   mesmo nome, PERSONALIZAMOS esses temas em vez de criar temas novos.
-
-   As cores estão em OKLCH: oklch(luminosidade croma matiz).
-     - luminosidade: 0% (preto) a 100% (branco)
-     - croma: 0 (cinza) até ~0.37 (cor muito saturada)
-     - matiz: ângulo de 0 a 360 (0 vermelho, 90 amarelo, 150 verde,
-       250 azul, 300 roxo)
-   A vantagem do OKLCH: mudando só a matiz, a cor continua com o mesmo
-   "brilho" aparente. Ótimo para criar paletas.
-
-   Gerador visual de temas: https://daisyui.com/theme-generator/
-   ========================================================================== */
-
-@plugin "daisyui/theme" {
-  name: "light";
-  default: true;       /* tema usado quando o checkbox está desmarcado */
-  prefersdark: false;
-  color-scheme: light;
-
-  --color-base-100: oklch(99% 0.01 80);    /* papel */
-  --color-base-200: oklch(96% 0.02 80);
-  --color-base-300: oklch(90% 0.03 75);
-  --color-base-content: oklch(28% 0.04 265); /* tinta */
-  --color-primary: oklch(55% 0.2 275);     /* anil: seleção */
-  --color-primary-content: oklch(98% 0.01 275);
-  --color-secondary: oklch(68% 0.19 20);   /* coral: dica */
-  --color-secondary-content: oklch(99% 0.01 20);
-  --color-accent: oklch(78% 0.15 75);      /* âmbar: destaques */
-  --color-accent-content: oklch(28% 0.05 75);
-  --color-neutral: oklch(32% 0.04 265);
-  --color-neutral-content: oklch(97% 0.01 265);
-  --color-info: oklch(52% 0.17 250);       /* avisos */
-  --color-info-content: oklch(98% 0.01 250);
-  --color-success: oklch(58% 0.14 160);    /* manias respeitadas */
-  --color-success-content: oklch(98% 0.01 160);
-  --color-warning: oklch(76% 0.16 65);     /* manias pendentes */
-  --color-warning-content: oklch(28% 0.06 65);
-  --color-error: oklch(58% 0.21 25);       /* manias violadas */
-  --color-error-content: oklch(98% 0.01 25);
-
-  /* Arredondamento e "profundidade" dos componentes do daisyUI. */
-  --radius-selector: 1rem;
-  --radius-field: 0.75rem;
-  --radius-box: 1.25rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 1;
-  --noise: 0;
-}
-
-@plugin "daisyui/theme" {
-  name: "dark";
-  default: false;
-  /* Não usamos `prefersdark: true`: com ele, num sistema escuro, desmarcar o
-     checkbox não voltaria ao tema claro. A preferência do sistema é lida
-     pelo main.js e passada ao Elm. */
-  prefersdark: false;
-  color-scheme: dark;
-
-  --color-base-100: oklch(22% 0.03 270);
-  --color-base-200: oklch(18% 0.03 270);
-  --color-base-300: oklch(30% 0.04 270);
-  --color-base-content: oklch(92% 0.02 270);
-  --color-primary: oklch(68% 0.18 280);
-  --color-primary-content: oklch(15% 0.04 280);
-  --color-secondary: oklch(72% 0.17 15);
-  --color-secondary-content: oklch(15% 0.04 15);
-  --color-accent: oklch(82% 0.14 80);
-  --color-accent-content: oklch(20% 0.04 80);
-  --color-neutral: oklch(30% 0.03 270);
-  --color-neutral-content: oklch(92% 0.02 270);
-  --color-info: oklch(78% 0.12 230);
-  --color-info-content: oklch(18% 0.04 230);
-  --color-success: oklch(78% 0.14 160);
-  --color-success-content: oklch(18% 0.04 160);
-  --color-warning: oklch(80% 0.15 70);
-  --color-warning-content: oklch(20% 0.05 70);
-  --color-error: oklch(68% 0.2 22);
-  --color-error-content: oklch(15% 0.04 22);
-
-  --radius-selector: 1rem;
-  --radius-field: 0.75rem;
-  --radius-box: 1.25rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 1;
-  --noise: 0;
-}
-
-
-/* ==========================================================================
-   3. FONTES NO TAILWIND
-
-   Variáveis dentro de `@theme` viram utilitários do Tailwind: `--font-display`
-   cria a classe `font-display`, que podemos usar em `@apply font-display`.
-   `--font-sans` substitui a fonte padrão da página inteira.
-   ========================================================================== */
-
-@theme {
-  --font-sans: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
-}
-
-
-/* ==========================================================================
-   4. VARIÁVEIS DE PERSONALIZAÇÃO
-
-   Quer deixar o projeto com a sua cara? Comece mudando os valores abaixo.
-   Variáveis CSS (custom properties) começam com `--` e são lidas com
-   `var(--nome)`. Elas "cascateiam": um valor definido num elemento vale
-   para todos os seus descendentes, e pode ser sobrescrito mais abaixo na
-   árvore (veja como o tema escuro redefine algumas logo em seguida).
-
-   `color-mix(in oklch, A 30%, B)` mistura duas cores: 30% de A, 70% de B.
-   Com `transparent` no lugar de B, obtemos A com 30% de opacidade.
-   ========================================================================== */
-
-:root {
-  /* --- Tipografia --- */
-  --font-title: var(--font-display);  /* título "Mesa da BCE" */
-
-  /* --- Layout --- */
-  --panel-width: 18rem;  /* coluna dos amigos (telas largas) */
-  --game-gap: 1.5rem;    /* espaço entre as duas colunas */
-
-  /* O menor entre: a largura da tela menos o padding lateral do `.app-main`
-     (2 x 1rem) e um teto em rem. `min()` aceita unidades misturadas, e a
-     subtração dentro dele funciona como num `calc()`. Se usasse 94vw, a
-     mesa somada ao padding passaria da largura da tela nos celulares. */
-  --mesa-size: min(100vw - 2rem, 32rem);
-
-  /* --- Fundo da página --- */
-  /* Vários gradientes radiais sobrepostos formam um "mesh gradient". */
-  --page-gradient:
-    radial-gradient(60rem 40rem at 10% -10%, color-mix(in oklch, var(--color-primary) 22%, transparent), transparent 70%),
-    radial-gradient(50rem 40rem at 110% 10%, color-mix(in oklch, var(--color-secondary) 18%, transparent), transparent 70%),
-    radial-gradient(60rem 50rem at 50% 120%, color-mix(in oklch, var(--color-accent) 22%, transparent), transparent 70%);
-  --texture-opacity: 0.35;  /* granulado sobre o fundo; 0 desliga */
-  --dot-grid-opacity: 0.5;  /* grade de pontinhos; 0 desliga */
-
-  /* --- Efeito vidro (glassmorphism) dos painéis --- */
-  --glass-bg: color-mix(in oklch, var(--color-base-100) 72%, transparent);
-  --glass-border: color-mix(in oklch, var(--color-base-content) 10%, transparent);
-  --glass-blur: 16px;
-}
-
-/* Ajustes de algumas variáveis só no tema escuro. O primeiro seletor é o
-   mesmo que o daisyUI usa no botão de tema (veja a seção 2). O segundo cobre
-   quem ativar o tema com `data-theme="dark"` no <html>. */
-:root:has(.theme-controller[value="dark"]:checked),
-[data-theme="dark"] {
-  --texture-opacity: 0.2;
-}
-
-
-/* ==========================================================================
-   5. BASE
-   `@layer base` guarda estilos de elementos HTML "crus" (body, h1...). As
-   camadas (layers) definem a prioridade: base < components < utilities.
-   Assim, uma classe utilitária no HTML sempre vence um estilo de componente.
-   ========================================================================== */
-
-@layer base {
-  body {
-    @apply min-h-dvh bg-base-200 text-base-content antialiased;
-    background-image: var(--page-gradient);
-    background-attachment: fixed;
-  }
-
-  /* Textura granulada: um SVG com o filtro `feTurbulence` (ruído) embutido
-     como "data URI" (o arquivo inteiro escrito dentro da URL). O
-     pseudo-elemento `::before` cobre a tela toda sem interferir nos cliques
-     (`pointer-events: none`). `mix-blend-mode` mistura o ruído com o que
-     está embaixo, como uma camada no Photoshop. */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    opacity: var(--texture-opacity);
-    mix-blend-mode: soft-light;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
-  /* Grade de pontinhos, como papel de caderno quadriculado. Um único
-     gradiente radial minúsculo repetido a cada 24px. `mask-image` faz a
-     grade sumir suavemente nas bordas da tela. */
-  body::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    opacity: var(--dot-grid-opacity);
-    background-image: radial-gradient(color-mix(in oklch, var(--color-base-content) 18%, transparent) 1px, transparent 1.5px);
-    background-size: 24px 24px;
-    mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
-  }
-
-  ::selection {
-    background: color-mix(in oklch, var(--color-accent) 60%, transparent);
-  }
-}
-
-
-/* ==========================================================================
-   6. COMPONENTES
-   ========================================================================== */
-
-@layer components {
-
-  /* ---------- Estrutura da página ---------- */
-
-  .app {
-    @apply flex min-h-dvh flex-col;
-  }
-
-  /* Largura do conteúdo, compartilhada pelo cabeçalho e pelo jogo, para
-     que as bordas de ambos fiquem alinhadas em qualquer tela.
-
-     Em telas estreitas, o conteúdo tem a largura da mesa. Em telas largas,
-     tem a largura da mesa + espaço + coluna dos amigos. `calc()` faz contas
-     com medidas de unidades diferentes (aqui, a mistura de vw e rem que
-     existe dentro de --mesa-size). */
-  .app-container {
-    width: 100%;
-    max-width: var(--mesa-size);
-    margin-inline: auto;
-
-    @media (width >= 64rem) {
-      max-width: calc(var(--mesa-size) + var(--game-gap) + var(--panel-width));
-    }
-  }
-
-  /* A barra de vidro ocupa a tela toda, mas o seu conteúdo fica dentro de
-     um `.app-container`, alinhado com o jogo. */
-  .app-header {
-    @apply sticky top-0 z-10 px-4 py-3 sm:px-8;
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-    border-bottom: 1px solid var(--glass-border);
-  }
-
-  .app-header-content {
-    @apply flex items-baseline gap-3;
-  }
-
-  .app-title {
-    @apply text-3xl leading-none tracking-tight;
-    font-family: var(--font-title);
-    font-weight: 800;
-    /* Eixos extras da Fraunces: SOFT arredonda as serifas, WONK entorta
-       algumas letras. Experimente outros valores (SOFT: 0 a 100). */
-    font-variation-settings: "SOFT" 100, "WONK" 1;
-    /* Texto com gradiente: o fundo é pintado só dentro das letras. */
-    background: linear-gradient(120deg, var(--color-primary), var(--color-secondary) 60%, var(--color-accent));
-    background-clip: text;
-    color: transparent;
-  }
-
-  /* Botão sol/lua. `swap` (daisyUI) mostra `.swap-off` com o checkbox
-     desmarcado e `.swap-on` com ele marcado; `swap-rotate` gira na troca.
-     `ms-auto` (margin-inline-start: auto) empurra o botão para a direita. */
-  .theme-toggle {
-    @apply swap swap-rotate btn btn-circle btn-ghost ms-auto self-center text-xl;
-  }
-
-  .app-main {
-    @apply flex flex-1 items-start justify-center p-4 sm:p-8;
-  }
-
-  /* ---------- Dificuldade ---------- */
-
-  .bce-niveis {
-    @apply join w-full;
-  }
-
-  .bce-nivel {
-    @apply btn join-item flex-1;
-
-    &.bce-nivel--ativo {
-      @apply btn-primary;
-    }
-  }
-
-  /* ---------- Mensagens ---------- */
-
-  .message {
-    @apply alert w-full text-sm;
-  }
-  .message--error { @apply alert-error; }
-  .message--info  { @apply alert-info; }
-}
-
-
-/* ==========================================================================
-   7. ACESSIBILIDADE
-   ========================================================================== */
-
-/* Quem configurou o sistema para "reduzir movimento" não vê animações. */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* Mesa da BCE */
-@layer components {
-  .bce-layout,
-  .bce-partida {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .bce-layout h2 {
-    font-size: 1.25rem;
-    font-weight: 650;
-    margin-block-end: 0.5rem;
-  }
-
-  .bce-acoes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .bce-amigos {
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  .bce-instrucao {
-    margin-block-end: 0.75rem;
-  }
-
-  .bce-card,
-  .bce-cadeira {
-    display: grid;
-    gap: 0.2rem;
-    border: 1px solid var(--color-base-300);
-    border-radius: var(--radius-box);
-    background: var(--color-base-100);
-    padding: 0.65rem;
-    overflow-wrap: anywhere;
-  }
-
-  .bce-card {
-    text-align: start;
-  }
-
-  .bce-nome {
-    font-weight: 650;
-  }
-
-  .bce-mania {
-    font-size: 0.875rem;
-  }
-
-  .bce-mesa {
-    display: grid;
-    grid-template-columns: repeat(var(--bce-colunas), minmax(0, 1fr));
-    gap: 0.35rem;
-    padding: 0.5rem;
-    border-radius: var(--radius-box);
-    background: var(--color-base-300);
-  }
-
-  .bce-cadeira {
-    min-height: 4.5rem;
-    align-content: center;
-    font-size: 0.875rem;
-  }
-
-  .bce-fixo {
-    background: var(--color-base-200);
-  }
-
-  .bce-selecionado {
-    border-color: var(--color-primary);
-    box-shadow: inset 0 0 0 1px var(--color-primary);
-  }
-
-  .bce-conflito {
-    border-color: var(--color-error);
-  }
-
-  .bce-destaque {
-    outline: 2px dashed var(--color-accent);
-    outline-offset: -3px;
-  }
-
-  .theme-toggle > .theme-controller {
-    display: block;
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    opacity: 0;
-  }
-
-  .theme-toggle:has(> .theme-controller:focus-visible) {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
-  .bce-layout button:enabled {
-    cursor: pointer;
-  }
-
-  .bce-layout button:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
-  @media (min-width: 48rem) {
-    .bce-partida {
-      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-      align-items: start;
-    }
-  }
-}
+.desk.bce-destaque { filter: drop-shadow(0 0 7px #f6e000); }
+.desk.bce-destaque.bce-conflito { filter: drop-shadow(0 0 1px #ed3653) drop-shadow(0 0 3px #ed3653) drop-shadow(0 0 7px rgba(237, 54, 83, 0.9)); }
+.pixel-game.is-dark .desk.bce-destaque.bce-conflito { filter: drop-shadow(0 0 1px #ff5b7a) drop-shadow(0 0 3px #ff5b7a) drop-shadow(0 0 7px rgba(255, 91, 122, 0.95)); }
+.desk:focus-visible, .icon-action:focus-visible, .character-card:focus-visible { outline: 3px dashed #7871ff; outline-offset: 3px; }
+/* Porta fixa ao lado da ultima mesa da primeira linha em qualquer dificuldade. */
+.door-marker { position: absolute; top: 0; left: calc(100% + 2px); width: calc(var(--desk-size) * .78); height: auto; display: block; flex: none; image-rendering: pixelated; pointer-events: none; z-index: 1; }
+.game-error { margin: 0 auto; }
+@media (min-width: 1000px) { .board-area { margin-top: -1px; } }
+@media (max-width: 720px) { .game-shell { padding: 16px 12px 24px; } .game-header { height: 155px; } .game-logo { height: 125px; } .theme-toggle { top: 8px; right: 2px; } .game-content { grid-template-columns: 107px minmax(0, 1fr); gap: 8px; } .characters { min-height: 420px; height: calc(100vh - 195px); } .character-image { height: 79px; width: 75px; } .character-name { font-size: 16px; letter-spacing: -1px; } .character-rule { font-size: 11px; } .levels { gap: 10px; margin-top: 10px; } .bce-nivel { font-size: 18px; letter-spacing: -1px; } .game-actions { gap: 7px; } .icon-action { width: 38px; height: 38px; } .desk-grid, .desk-grid--facil, .desk-grid--medio, .desk-grid--dificil { --desk-size: clamp(52px, 8vw, 78px); gap: 8px; } .desk-row { gap: 8px; } .door-marker { left: calc(100% + 1px); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
