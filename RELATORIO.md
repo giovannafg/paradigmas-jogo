@@ -1,27 +1,13 @@
-# Mesa da BCE
-
-## 1. Identificação
-
-| Nome completo | Matrícula | Turma (14h/16h) | Usuário GitHub |
-|---------------|-----------|-----------------|----------------|
-| Arthur Ribeiro e Sousa  | 221007850  | 14h           | @artrsousa1     |
-| Felipe Lopes Pedroza        | 231026330  | 14h           | @darkymeubem     |
-| Gabriel Dantas Bevilaqua Mendes    | 231038072  | 14h           | @gbevi     |
-|  Gabriel Henrique Castelo Costa       | 221008051  | 14h           | @GabrielCastelo-31    |
-| Giovanna Felipe Guimarães        | 241038998 | 14h           | @giovannafg     |
-| João Victor Felix Moreira   | 231037709  | 14h           | @joaofmoreiraa     |
-| Mayara Marques Silva    | 231035731  | 14h           | @maymarquee     |
-
-- **Nome do projeto:** Mesa da BCE
 - **Nome do grupo:** Os Sem Agenda
 
 - **Repositório:** [https://github.com/giovannafg/paradigmas-jogo](https://github.com/giovannafg/paradigmas-jogo)
-- **Commit ou tag entregue:** `d3cc72c` (registrado no relatório original; confirmar se corresponde ao código final)
+- **Commit ou tag entregue:** `8202537`
+- **Commit ou tag entregue:** `bf62ea6`
 
 - **Ponto de partida:** jogo inventado
 
 - **Slides da apresentação oral:** `docs/apresentacao.pdf` 
-  
+
 
 ## 2. Resumo
 
@@ -264,15 +250,15 @@ Os comandos de execução estão na seção 3.
 
 ## 10. Contribuição de cada integrante
 
-| Integrante | Principais contribuições |
-|---|---|
-| Arthur Ribeiro e Sousa | Pendente de confirmação pelo integrante. |
-| Felipe Lopes Pedroza | Pendente de confirmação pelo integrante. |
-| Gabriel Dantas Bevilaqua Mendes | Pendente de confirmação pelo integrante. |
-| Gabriel Henrique Castelo Costa | Pendente de confirmação pelo integrante. |
-| Giovanna Felipe Guimarães | Pendente de confirmação pelo integrante. |
-| João Victor Felix Moreira | Pendente de confirmação pelo integrante. |
-| Mayara Marques Silva | Pendente de confirmação pelo integrante. |
+| Integrante | Principais contribuições | Pull Requests |
+|---|---|---|
+| Arthur Ribeiro e Sousa | Implementou a dica (`hint`) que aponta a mania responsável por forçar a jogada e escreveu os testes plunit das regras e casos de borda, corrigindo o `estado_valido`. | [#26](https://github.com/giovannafg/paradigmas-jogo/pull/26), [#27](https://github.com/giovannafg/paradigmas-jogo/pull/27) |
+| Felipe Lopes Pedroza | Criou o módulo puro de tipos do domínio em Elm e redigiu as seções 6.2 e 6.3 do relatório (parte Elm). | [#29](https://github.com/giovannafg/paradigmas-jogo/pull/29), [#30](https://github.com/giovannafg/paradigmas-jogo/pull/30) |
+| Gabriel Dantas Bevilaqua Mendes | Implementou o resolvedor (`solve`/`count_solutions`) e o gerador de fases com solução única em Prolog, documentou as seções 5.1 a 5.3 do relatório e limpou o que restava do template do Sudoku. | [#24](https://github.com/giovannafg/paradigmas-jogo/pull/24), [#25](https://github.com/giovannafg/paradigmas-jogo/pull/25), [#36](https://github.com/giovannafg/paradigmas-jogo/pull/36), [#37](https://github.com/giovannafg/paradigmas-jogo/pull/37) |
+| Gabriel Henrique Castelo Costa | Implementou a tela da Mesa da BCE em Elm, ligando a interface às rotas da API. | [#33](https://github.com/giovannafg/paradigmas-jogo/pull/33) |
+| Giovanna Felipe Guimarães | Montou o ponto de partida do repositório e a API FastAPI (rotas de fase, estado, jogada, dica e resolver, com testes), o `Api.elm` com requisições, decoders e encoders, além da documentação de regras e da seção 7 do relatório. | [#23](https://github.com/giovannafg/paradigmas-jogo/pull/23), [#31](https://github.com/giovannafg/paradigmas-jogo/pull/31), [#32](https://github.com/giovannafg/paradigmas-jogo/pull/32) |
+| João Victor Felix Moreira | Refez o frontend do jogo (UI/UX: layout, temas, sprites e feedback visual) e atualizou o relatório com as seções finais. | [#39](https://github.com/giovannafg/paradigmas-jogo/pull/39) |
+| Mayara Marques Silva | Escreveu o CONTRIBUTING.md com os combinados do grupo, modelou em Prolog a mesa, os amigos e as manias do jogo, ajustou o limite de tamanho da mesa e o motivo da dica, e redigiu as seções 1 a 4 do relatório. | [#21](https://github.com/giovannafg/paradigmas-jogo/pull/21), [#22](https://github.com/giovannafg/paradigmas-jogo/pull/22), [#35](https://github.com/giovannafg/paradigmas-jogo/pull/35) |
 
 ## 11. Fontes, código de terceiros e uso de IA
 
@@ -280,12 +266,11 @@ Os comandos de execução estão na seção 3.
 
 **Referências técnicas:** documentação oficial do [SWI-Prolog](https://www.swi-prolog.org/pldoc/), [Elm](https://guide.elm-lang.org/), [FastAPI](https://fastapi.tiangolo.com/) e [Vite](https://vite.dev/). São referências recomendadas para registrar os conceitos; o grupo deve confirmar quais efetivamente consultou.
 
-**Uso de ferramentas de IA:** houve assistência do ChatGPT para alterações do frontend e revisão de documentação. 
+**Uso de ferramentas de IA:** o grupo utilizou assistentes de IA como apoio ao longo das etapas de desenvolvimento — esclarecimento de dúvidas sobre as linguagens e bibliotecas usadas, sugestões de implementação em Prolog e Elm, ajustes de layout e estilo no frontend, apoio na escrita de testes e revisão de texto da documentação e do relatório. Em todos os casos o uso foi de apoio: as decisões de modelagem e de arquitetura foram do grupo, e todo o código sugerido foi lido, adaptado e validado pelos integrantes antes de entrar no repositório.
 
-| Ferramenta | Para que foi usada | Como o resultado foi ou será verificado |
+| Ferramenta | Para que foi usada | Como o resultado foi verificado |
 |---|---|---|
-| ChatGPT | Sugestões e alterações no frontend (layout, temas, sprites e feedback visual), além da revisão do relatório | Revisão de arquivos, compilação e testes manuais/automatizados pelo grupo; resultados ainda não documentados aqui |
-| Outras ferramentas, se utilizadas | Pendente de declaração pelo grupo | Pendente de confirmação |
+| Assistentes de IA (ChatGPT e similares) | Apoio nas etapas de desenvolvimento: dúvidas de linguagem e bibliotecas, sugestões de implementação em Prolog e Elm, ajustes de frontend, apoio na escrita de testes e revisão da documentação | Revisão do código pelos integrantes, compilação do projeto, execução dos testes automatizados (plunit e elm-test) e testes manuais do jogo antes de abrir cada pull request |
 
 ## 12. Apresentação oral
 
@@ -310,13 +295,3 @@ No Prolog, a principal vantagem foi modelar o que caracteriza uma configuração
 No Elm, a vantagem foi representar o domínio por tipos fechados e controlar os efeitos por mensagens. Em vez de modificar a tela diretamente, cada evento produz um novo estado e a `view` o transforma em interface. Essa arquitetura ajudou a isolar as mudanças visuais — matriz de mesas, sprites, modo noturno, dicas, erros e rolagem — sem reimplementar no navegador as regras do Prolog.
 
 O projeto evidencia a complementaridade entre os paradigmas: o lógico define e procura estados válidos; o funcional organiza a interação de maneira previsível e tipada. A integração HTTP permite que cada linguagem se concentre em suas características, com o custo adicional de converter dados e sincronizar os estados das camadas.
-
----
-
-## Pendências para a entrega final
-
-- Confirmar **commit/tag** da versão definitiva (o relatório anterior citava `d3cc72c`).
-- Incluir uma captura válida em `docs/captura.png` e definir se haverá slides.
-- Completar a **contribuição individual** dos sete integrantes, com acordo do grupo e histórico de commits.
-- Confirmar **licenças e fontes** de sprites, bibliotecas e referências consultadas, e classificar corretamente o uso de IA.
-- Executar e registrar os resultados dos testes (`make test`) e do validador (`uv run scripts/validar_entrega.py`); revisar referências de linha após quaisquer novas mudanças.

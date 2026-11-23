@@ -1,11 +1,10 @@
 @import "tailwindcss";
-@import "@fontsource-variable/outfit";
 
-:root { font-family: "Courier New", monospace; font-synthesis: none; }
+:root { font-family: "Jersey 10", sans-serif; font-synthesis: none; }
 * { box-sizing: border-box; }
 html, body, #app { min-height: 100%; margin: 0; }
 body { margin: 0; }
-button { font: inherit; }
+button, input, textarea, select { font: inherit; }
 .pixel-game { --ink: #2e3079; --background: #ededed; --body-text: #111; --accent: #ff6139; --message-bg: #ffffffcc; min-height: 100vh; color: var(--ink); background: var(--background); transition: background .2s, color .2s; }
 .pixel-game.is-dark { --ink: #eeeef2; --background: #151538; --body-text: #fafafa; --message-bg: #242452; }
 .game-shell { max-width: 1180px; min-height: 100vh; margin: auto; padding: 44px 32px 30px; }
@@ -25,8 +24,8 @@ button { font: inherit; }
 .character-card { color: var(--ink); border: 2px solid transparent; background: transparent; width: 100%; display: flex; flex-direction: column; align-items: center; text-align: center; margin: 0 0 22px; padding: 4px; cursor: pointer; }
 .character-card:disabled, .character-card.is-seated { cursor: default; opacity: .63; }
 .character-image { display: block; width: 86px; height: 106px; object-fit: contain; image-rendering: pixelated; }
-.character-name { font-family: "Courier New", monospace; font-size: 23px; line-height: 1; font-weight: 1000; letter-spacing: -1.6px; text-shadow: 1px 1px currentColor; margin-top: 4px; }
-.character-rule { font-family: "Outfit Variable", sans-serif; font-size: 14px; line-height: 1.45; font-weight: 800; color: var(--body-text); margin: 6px 0 0; }
+.character-name { font-family: "Jersey 10", sans-serif; font-size: 30px; line-height: 1; font-weight: 400; letter-spacing: 0; margin-top: 4px; }
+.character-rule { font-family: "Jersey 10", sans-serif; font-size: 19px; line-height: 1.13; font-weight: 400; color: var(--body-text); margin: 6px 0 0; }
 .character-card.bce-selecionado { border: 2px dashed #7970fe; border-radius: 10px; }
 .character-card.bce-conflito .character-name { color: #fc6c87; }
 .character-card.bce-destaque { outline: 3px dashed #ffcf00; outline-offset: 2px; }
@@ -35,7 +34,7 @@ button { font: inherit; }
 .scroll-indicator:focus-visible { outline: 3px dashed #7871ff; outline-offset: 2px; }
 .board-area { min-width: 0; display: flex; align-items: center; flex-direction: column; }
 .levels { display: flex; gap: clamp(22px, 4vw, 54px); justify-content: center; margin: 25px 0 17px; }
-.bce-nivel { border: 0; background: none; color: var(--ink); font-family: "Courier New", monospace; font-size: clamp(25px, 2.6vw, 36px); font-weight: 1000; letter-spacing: -2px; cursor: pointer; padding: 5px 0; }
+.bce-nivel { border: 0; background: none; color: var(--ink); font-family: "Jersey 10", sans-serif; font-size: clamp(36px, 3.3vw, 48px); font-weight: 400; letter-spacing: 0; cursor: pointer; padding: 5px 0; }
 .bce-nivel--ativo { text-decoration: none; }
 .bce-nivel:hover:not(:disabled), .bce-nivel:focus-visible { color: #ff6139; }
 .game-actions { display: flex; justify-content: center; gap: 17px; height: 49px; }
@@ -43,7 +42,7 @@ button { font: inherit; }
 .icon-action img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
 .icon-action:disabled { opacity: .35; cursor: default; }
 .icon-action:hover:enabled { transform: translateY(-3px); }
-.game-messages { min-height: 28px; width: 100%; text-align: center; font-family: "Outfit Variable", sans-serif; font-size: 14px; font-weight: 700; }
+.game-messages { min-height: 28px; width: 100%; text-align: center; font-family: "Jersey 10", sans-serif; font-size: 19px; font-weight: 400; }
 .game-status:empty { display: none; }
 .game-status { margin: 4px 0; }
 .message { padding: 8px; background: var(--message-bg); border-radius: 6px; margin: 5px 0; }
@@ -98,5 +97,5 @@ button { font: inherit; }
 .door-marker { position: absolute; top: 0; left: calc(100% + 2px); width: calc(var(--desk-size) * .78); height: auto; display: block; flex: none; image-rendering: pixelated; pointer-events: none; z-index: 1; }
 .game-error { margin: 0 auto; }
 @media (min-width: 1000px) { .board-area { margin-top: -1px; } }
-@media (max-width: 720px) { .game-shell { padding: 16px 12px 24px; } .game-header { height: 155px; } .game-logo { height: 125px; } .theme-toggle { top: 8px; right: 2px; } .game-content { grid-template-columns: 107px minmax(0, 1fr); gap: 8px; } .characters { min-height: 420px; height: calc(100vh - 195px); } .character-image { height: 79px; width: 75px; } .character-name { font-size: 16px; letter-spacing: -1px; } .character-rule { font-size: 11px; } .levels { gap: 10px; margin-top: 10px; } .bce-nivel { font-size: 18px; letter-spacing: -1px; } .game-actions { gap: 7px; } .icon-action { width: 38px; height: 38px; } .desk-grid, .desk-grid--facil, .desk-grid--medio, .desk-grid--dificil { --desk-size: clamp(52px, 8vw, 78px); gap: 8px; } .desk-row { gap: 8px; } .door-marker { left: calc(100% + 1px); } }
+@media (max-width: 720px) { .game-shell { padding: 16px 12px 24px; } .game-header { height: 155px; } .game-logo { height: 125px; } .theme-toggle { top: 8px; right: 2px; } .game-content { grid-template-columns: 107px minmax(0, 1fr); gap: 8px; } .characters { min-height: 420px; height: calc(100vh - 195px); } .character-image { height: 79px; width: 75px; } .character-name { font-size: 23px; letter-spacing: 0; } .character-rule { font-size: 15px; } .levels { gap: 10px; margin-top: 10px; } .bce-nivel { font-size: 27px; letter-spacing: 0; } .game-actions { gap: 7px; } .icon-action { width: 38px; height: 38px; } .desk-grid, .desk-grid--facil, .desk-grid--medio, .desk-grid--dificil { --desk-size: clamp(52px, 8vw, 78px); gap: 8px; } .desk-row { gap: 8px; } .door-marker { left: calc(100% + 1px); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
