@@ -4,7 +4,7 @@ import Api exposing (Dificuldade(..), Estado)
 import Bce exposing (Amigo, Dica, Estrelas(..), Fase, Objeto(..), Posicao, Rodada(..), Selecao(..), StatusMania(..))
 import Browser
 import Browser.Dom
-import Html exposing (Html, button, div, h1, h2, header, img, input, label, main_, p, section, span, text)
+import Html exposing (Html, button, div, h1, h2, h3, header, img, input, label, li, main_, p, section, span, strong, text, ul)
 import Html.Attributes exposing (alt, attribute, checked, class, classList, disabled, id, src, style, title, type_, value)
 import Html.Events exposing (onCheck, onClick)
 import Task
@@ -18,6 +18,7 @@ type alias Model =
     { tela : Tela
     , darkTheme : Bool
     , aguardando : Bool
+    , regrasAbertas : Bool
     }
 
 
@@ -75,6 +76,7 @@ type Msg
     | DescerPersonagens
     | RecebeuPosicaoPersonagens (Result Browser.Dom.Error Browser.Dom.Viewport)
     | RolagemConcluida
+    | AlternarRegras Bool
 
 
 main : Program Flags Model Msg
@@ -90,7 +92,7 @@ main =
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     update (AcaoJogo (NovaFase Facil))
-        { tela = Inicio, darkTheme = flags.darkTheme, aguardando = False }
+        { tela = Inicio, darkTheme = flags.darkTheme, aguardando = False, regrasAbertas = False }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -159,6 +161,9 @@ update msg model =
 
         RolagemConcluida ->
             ( model, Cmd.none )
+
+        AlternarRegras aberto ->
+            ( { model | regrasAbertas = aberto }, Cmd.none )
 
 
 executar : Acao -> Model -> ( Model, Cmd Msg )
@@ -468,6 +473,11 @@ view model =
             , main_ [ class "game-main", attribute "aria-busy" (boolText model.aguardando) ]
                 [ viewTela model ]
             ]
+        , if model.regrasAbertas then
+            viewRegras
+
+          else
+            text ""
         ]
 
 
@@ -570,6 +580,14 @@ viewTela model =
                         [ viewIconAcao "Dica" "dica" PedirDica (not jogavel || partida.dica /= Nothing)
                         , viewIconAcao "Resolver" "resolver" Resolver (not jogavel)
                         , viewIconAcao "Recomeçar" "recomecar" Recomecar model.aguardando
+                        , button
+                            [ type_ "button"
+                            , class "icon-action icon-action--regras"
+                            , title "Regras do jogo"
+                            , attribute "aria-label" "Regras do jogo"
+                            , onClick (AlternarRegras True)
+                            ]
+                            [ text "?" ]
                         ]
                     , viewMensagens model.aguardando partida
                     , div [ class "classroom-layout" ]
@@ -829,7 +847,75 @@ viewCadeira jogavel partida posicao =
         , title rotulo
         , onClick (AcaoJogo (AtivarCadeira posicao))
         ]
-        [ img [ src (sprite spriteMesa), alt "" ] [] ]
+        [ img [ src (sprite spriteMesa), alt "" ] []
+        ]
+
+
+viewRegras : Html Msg
+viewRegras =
+    div [ class "rules-overlay", attribute "role" "dialog", attribute "aria-modal" "true", attribute "aria-label" "Regras do jogo" ]
+        [ div [ class "rules-backdrop", onClick (AlternarRegras False) ] []
+        , div [ class "rules-panel" ]
+            [ button [ type_ "button", class "rules-close", attribute "aria-label" "Fechar regras", onClick (AlternarRegras False) ] [ text "×" ]
+            , h2 [ class "rules-title" ] [ text "Como jogar" ]
+            , p [] [ text "É véspera de prova e o grupo vai estudar na BCE. Cada amigo tem uma mania. Sente todo mundo respeitando todas as manias ao mesmo tempo." ]
+            , ul []
+                [ li [] [ text "Clique num amigo na coluna da esquerda e depois numa cadeira livre." ]
+                , li [] [ text "Clique numa cadeira ocupada para levantar quem está nela." ]
+                , li [] [ text "Quem já começa sentado está fixo e não sai do lugar." ]
+                , li [] [ text "Pode sobrar cadeira vazia." ]
+                ]
+            , h3 [] [ text "Posições" ]
+            , div [ class "rules-grids" ]
+                [ viewMiniGrade "Lado a lado" "mesma fileira, cadeira vizinha" [ ( 1, 0 ), ( 1, 2 ) ]
+                , viewMiniGrade "De frente" "mesma coluna, fileira vizinha" [ ( 0, 1 ), ( 2, 1 ) ]
+                , viewMiniGrade "Perto" "as 8 em volta, com diagonais" [ ( 0, 0 ), ( 0, 1 ), ( 0, 2 ), ( 1, 0 ), ( 1, 2 ), ( 2, 0 ), ( 2, 1 ), ( 2, 2 ) ]
+                ]
+            , h3 [] [ text "Objetos" ]
+            , ul []
+                [ li []
+                    [ strong [] [ text "Porta: " ]
+                    , text "é a cadeira do canto, ao lado do desenho da porta."
+                    ]
+                , li []
+                    [ strong [] [ text "Tomada: " ]
+                    , text "é a cadeira com o ícone de tomada."
+                    ]
+                ]
+            , h3 [] [ text "Botões" ]
+            , ul []
+                [ li [] [ strong [] [ text "Dica: " ], text "mostra uma jogada obrigatória. Sem dicas você ganha 3 estrelas; com 1 ou 2, ganha 2; com mais, 1." ]
+                , li [] [ strong [] [ text "Resolver: " ], text "o Prolog termina a mesa por você." ]
+                , li [] [ strong [] [ text "Recomeçar: " ], text "volta a fase ao início." ]
+                ]
+            ]
+        ]
+
+
+viewMiniGrade : String -> String -> List ( Int, Int ) -> Html Msg
+viewMiniGrade nome descricao marcadas =
+    div [ class "rules-grid-item" ]
+        [ div [ class "mini-grid", attribute "aria-hidden" "true" ]
+            (List.concatMap
+                (\l ->
+                    List.map
+                        (\c ->
+                            div
+                                [ classList
+                                    [ ( "mini-cell", True )
+                                    , ( "mini-cell--eu", ( l, c ) == ( 1, 1 ) )
+                                    , ( "mini-cell--ok", List.member ( l, c ) marcadas )
+                                    ]
+                                ]
+                                []
+                        )
+                        (List.range 0 2)
+                )
+                (List.range 0 2)
+            )
+        , strong [] [ text nome ]
+        , span [] [ text descricao ]
+        ]
 
 
 textoObjeto : Objeto -> String
