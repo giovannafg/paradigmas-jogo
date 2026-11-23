@@ -1,8 +1,7 @@
 - **Nome do grupo:** Os Sem Agenda
 
 - **Repositório:** [https://github.com/giovannafg/paradigmas-jogo](https://github.com/giovannafg/paradigmas-jogo)
-- **Commit ou tag entregue:** `8202537`
-- **Commit ou tag entregue:** `bf62ea6`
+- **Commit ou tag entregue:** `2e7cf81`
 
 - **Ponto de partida:** jogo inventado
 
