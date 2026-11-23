@@ -1,12 +1,23 @@
+# Mesa da BCE
+
+## 1. Identificação
+
+| Nome completo | Matrícula | Turma (14h/16h) | Usuário GitHub |
+|---------------|-----------|-----------------|----------------|
+| Arthur Ribeiro e Sousa | 221007850 | 14h | @artrsousa1 |
+| Felipe Lopes Pedroza | 231026330 | 14h | @darkymeubem |
+| Gabriel Dantas Bevilaqua Mendes | 231038072 | 14h | @gbevi |
+| Gabriel Henrique Castelo Costa | 221008051 | 14h | @GabrielCastelo-31 |
+| Giovanna Felipe Guimarães | 241038998 | 14h | @giovannafg |
+| João Victor Felix Moreira | 231037709 | 14h | @joaofmoreiraa |
+| Mayara Marques Silva | 231035731 | 14h | @maymarquee |
+
+- **Nome do projeto:** Mesa da BCE
 - **Nome do grupo:** Os Sem Agenda
-
 - **Repositório:** [https://github.com/giovannafg/paradigmas-jogo](https://github.com/giovannafg/paradigmas-jogo)
-- **Commit ou tag entregue:** `2e7cf81`
-
+- **Commit ou tag entregue:** `v1.0`
 - **Ponto de partida:** jogo inventado
-
-- **Slides da apresentação oral:** `docs/apresentacao.pdf` 
-
+- **Slides da apresentação oral:** não há
 
 ## 2. Resumo
 
@@ -20,7 +31,7 @@ As regras completas encontram-se em `docs/REGRAS.md`.
 
 ## 3. Como executar
 
-**Requisitos:** SWI-Prolog 10.0.2 (9.2+), Node.js 24.14 com npm (20+), uv 0.11 e Python gerenciado pelo uv. Essas versões foram registradas pelo grupo; não foram verificadas nesta revisão.
+**Requisitos:** SWI-Prolog 10.0.2 (9.2+), Node.js 24.14 com npm (20+), uv 0.11 e Python gerenciado pelo uv.
 
 ```sh
 git clone https://github.com/giovannafg/paradigmas-jogo.git
@@ -138,7 +149,7 @@ enxuga(Mesa, Amigos, [Lugar | Resto], Ancoras0, Ancoras) :-
 
 `ancoras/5` adiciona posições da solução até que só reste uma configuração válida. `enxuga/5` tenta retirar essas posições sem perder a unicidade. `count_solutions/5` precisa encontrar no máximo duas soluções para distinguir uma solução única de várias. O Prolog cuida da busca e do backtracking: o programa declara as restrições que definem a validade do estado, em vez de implementar manualmente uma sequência de tentativas de cadeiras. O limite de 50 candidatas em `generate/4` é uma **limitação**: se nenhuma passar, a geração falha.
 
-Na atualização visual, o gerador também passou a fixar o objeto lógico `porta` na primeira linha e última coluna (`bce.pl:481-488`): `(0,2)` nos níveis fácil e médio e `(0,3)` no difícil. O sprite mostrado no frontend não altera essa referência lógica. A tomada e a decoração são sorteadas em outras posições.
+O gerador fixa o objeto lógico `porta` na primeira linha e última coluna (`bce.pl:481-488`): `(0,2)` nos níveis fácil e médio e `(0,3)` no difícil. O sprite mostrado no frontend não altera essa referência lógica. A tomada e a decoração são sorteadas em outras posições.
 
 ## 6. Parte em Elm
 
@@ -213,7 +224,7 @@ combina =
 
 Trecho **resumido** de `Bce.elm:556` e `:626`; o código-fonte trata os sete tipos de mania. O `case` sobre uma tupla exige combinação válida entre o nome e a lista de alvos. `combina` transforma uma lista de resultados em um único resultado, propagando um erro caso exista, sem laço explícito nem mutação.
 
-As atualizações do frontend mantêm esse modelo: `viewLinhaMesas` cria as linhas da matriz; `viewCadeira` escolhe o sprite correspondente ao personagem e à tomada; `viewMensagens` mostra a regra em conflito; o destaque amarelo indica dicas e o vermelho indica violações; `TemaAlterado` troca a paleta; e `DescerPersonagens` solicita ao `Browser.Dom` o deslocamento da lista. Os sprites ficam em `frontend/public/sprites/` e o tema é persistido por `frontend/src/main.js` usando `localStorage`.
+A renderização segue o mesmo modelo: `viewLinhaMesas` cria as linhas da matriz; `viewCadeira` escolhe o sprite correspondente ao personagem e à tomada; `viewMensagens` mostra a regra em conflito; o destaque amarelo indica dicas e o vermelho indica violações; `TemaAlterado` troca a paleta; e `DescerPersonagens` solicita ao `Browser.Dom` o deslocamento da lista. Os sprites ficam em `frontend/public/sprites/` e o tema é persistido por `frontend/src/main.js` usando `localStorage`.
 
 ## 7. Integração
 
@@ -261,11 +272,25 @@ Os comandos de execução estão na seção 3.
 
 ## 11. Fontes, código de terceiros e uso de IA
 
-**Código reaproveitado.** No código existem bibliotecas tanto no frontend quanto no backend. 
+**Código reaproveitado.** O repositório partiu do template do trabalho final fornecido pelo professor (Sudoku em Prolog + Elm), importado no commit `4688bde`. A comparação entre esse commit e a versão entregue mostra o que veio do template e o que o grupo escreveu:
 
-**Referências técnicas:** documentação oficial do [SWI-Prolog](https://www.swi-prolog.org/pldoc/), [Elm](https://guide.elm-lang.org/), [FastAPI](https://fastapi.tiangolo.com/) e [Vite](https://vite.dev/). São referências recomendadas para registrar os conceitos; o grupo deve confirmar quais efetivamente consultou.
+| Origem | Arquivos | Situação na entrega |
+|---|---|---|
+| Template, sem alteração | `AVALIACAO.md`, `avaliacao-360/TEMPLATE.md`, `scripts/` (todos), `frontend/vite.config.js`, `.gitignore`, `backend/.gitignore`, `frontend/.gitignore` | Mantidos como vieram. |
+| Template, com pequenos ajustes | `Makefile` (testes apontando para `test_bce.pl` e novo alvo `test-frontend` com `elm-test`), `backend/pyproject.toml`, `frontend/package.json` (nome e `elm-test`), `frontend/elm.json` (dependências de teste), `frontend/index.html` (título e fonte), `frontend/src/main.js` (inicialização do Elm e tema no `localStorage`, quase igual ao template) | Infraestrutura herdada, adaptada ao projeto. |
+| Template, reescrito pelo grupo | `backend/app/prolog.py` e `backend/app/main.py` | Mantidos a docstring, os imports e o padrão de chamada `janus.query_once` / `HTTPException`; as funções, os modelos Pydantic e as cinco rotas `/api/fase/*` são do grupo. |
+| Template, reescrito pelo grupo | `frontend/src/Api.elm` | Mantidos o comentário do módulo e a função `expectJson`/`errorDetail` de tratamento de erros HTTP; requisições, decoders e encoders da BCE são do grupo. |
+| Template, reescrito pelo grupo | `frontend/src/Main.elm`, `frontend/src/style.css`, `README.md` | Do template restam só o esqueleto da Arquitetura Elm (`main`, `init`, `update`) e o `@import "tailwindcss"`; tela, mensagens, estado da partida, estilo e textos são do grupo. |
+| Removidos | `backend/prolog/sudoku.pl`, `test_sudoku.pl`, `backend/tests/test_api.py`, `frontend/src/Sudoku.elm`, `style-simples.css` | Substituídos pelos arquivos da BCE. |
+| Escritos pelo grupo | `backend/prolog/bce.pl`, `bce_api.pl`, `test_bce.pl`, `backend/tests/test_api_bce.py`, `frontend/src/Bce.elm`, `frontend/tests/ApiTest.elm`, `MainTest.elm`, `frontend/public/sprites/`, `frontend/public/assets/`, `docs/REGRAS.md`, `docs/API.md`, `CONTRIBUTING.md` | Código e arte novos. |
 
-**Uso de ferramentas de IA:** o grupo utilizou assistentes de IA como apoio ao longo das etapas de desenvolvimento — esclarecimento de dúvidas sobre as linguagens e bibliotecas usadas, sugestões de implementação em Prolog e Elm, ajustes de layout e estilo no frontend, apoio na escrita de testes e revisão de texto da documentação e do relatório. Em todos os casos o uso foi de apoio: as decisões de modelagem e de arquitetura foram do grupo, e todo o código sugerido foi lido, adaptado e validado pelos integrantes antes de entrar no repositório.
+**Bibliotecas de terceiros** (dependências, não copiadas para o repositório): SWI-Prolog com `clpfd` e `plunit`; FastAPI, Pydantic e `janus-swi` no backend; Elm (`elm/http`, `elm/json`, `elm/browser`, `elm-explorations/test`), Vite, `vite-plugin-elm`, Tailwind CSS e daisyUI no frontend. A fonte *Jersey 10* é carregada do Google Fonts (`frontend/index.html`).
+
+**Referências técnicas:** documentação oficial do [SWI-Prolog](https://www.swi-prolog.org/pldoc/), [Elm](https://guide.elm-lang.org/), [FastAPI](https://fastapi.tiangolo.com/) e [Vite](https://vite.dev/).
+
+**Uso de ferramentas de IA:** o grupo utilizou assistentes de IA como apoio ao longo das etapas de desenvolvimento - esclarecimento de dúvidas sobre as linguagens e bibliotecas usadas, sugestões de implementação em Prolog e Elm, ajustes de layout e estilo no frontend, apoio na escrita de testes e revisão de texto da documentação e do relatório. Em todos os casos o uso foi de apoio: as decisões de modelagem e de arquitetura foram do grupo, e todo o código sugerido foi lido, adaptado e validado pelos integrantes antes de entrar no repositório.
+
+- **Faixa de uso no código:** auxiliar
 
 | Ferramenta | Para que foi usada | Como o resultado foi verificado |
 |---|---|---|
@@ -273,24 +298,28 @@ Os comandos de execução estão na seção 3.
 
 ## 12. Apresentação oral
 
-**Slides:** pendente de confirmação; `docs/apresentacao.pdf` 
+**Slides:** não há
 
-**Roteiro sugerido (15 minutos):**
+**Roteiro (15 minutos):** cada integrante apresenta a parte que implementou (seção 10).
 
-| Parte | Duração | Responsáveis |
+| Parte | Duração | Quem apresenta |
 |---|:---:|---|
-| Contexto e objetivo | 2 min | Definir pelo grupo |
-| Demonstração dos níveis, temas, dicas e conflitos | 5 min | Definir pelo grupo |
-| Prolog: restrições, geração e unicidade | 3 min | Definir pelo grupo |
-| Elm: tipos, update e renderização | 3 min | Definir pelo grupo |
-| Limitações e aprendizados | 2 min | Definir pelo grupo |
-
-A distribuição de falas deverá ser aprovada por todos os integrantes.
+| Contexto, regras do jogo e combinados do grupo | 1 min | Mayara Marques Silva |
+| Demonstração: níveis, temas, dicas, conflitos e solução | 3 min | João Victor Felix Moreira |
+| Prolog: manias como fatos e restrições CLP(FD) (`mania/2`, `restricoes/4`) | 2 min | Mayara Marques Silva |
+| Prolog: resolvedor e gerador de fases com solução única (`solve/4`, `count_solutions/5`, `generate/4`) | 2 min | Gabriel Dantas Bevilaqua Mendes |
+| Prolog: dica com justificativa (`hint/4`) e testes plunit | 1,5 min | Arthur Ribeiro e Sousa |
+| Integração: rotas FastAPI e `Api.elm` (decoders e encoders) | 1,5 min | Giovanna Felipe Guimarães |
+| Elm: tipos do domínio em `Bce.elm` | 1,5 min | Felipe Lopes Pedroza |
+| Elm: tela da partida em `Main.elm` (Model, update, view) | 1,5 min | Gabriel Henrique Castelo Costa |
+| Limitações e aprendizados | 1 min | João Victor Felix Moreira |
 
 ## 13. Reflexão sobre os paradigmas
 
 No Prolog, a principal vantagem foi modelar o que caracteriza uma configuração correta sem programar todas as tentativas de alocação. As manias funcionam como relações e restrições, e o mecanismo de busca consegue encontrar soluções ou detectar impossibilidade. Em contrapartida, a geração aleatória de fases com solução única e a distinção entre restrições satisfeitas, violadas e pendentes exigiram atenção especial.
 
-No Elm, a vantagem foi representar o domínio por tipos fechados e controlar os efeitos por mensagens. Em vez de modificar a tela diretamente, cada evento produz um novo estado e a `view` o transforma em interface. Essa arquitetura ajudou a isolar as mudanças visuais — matriz de mesas, sprites, modo noturno, dicas, erros e rolagem — sem reimplementar no navegador as regras do Prolog.
+No Elm, a vantagem foi representar o domínio por tipos fechados e controlar os efeitos por mensagens. Em vez de modificar a tela diretamente, cada evento produz um novo estado e a `view` o transforma em interface. Essa arquitetura ajudou a isolar as mudanças visuais - matriz de mesas, sprites, modo noturno, dicas, erros e rolagem - sem reimplementar no navegador as regras do Prolog.
 
 O projeto evidencia a complementaridade entre os paradigmas: o lógico define e procura estados válidos; o funcional organiza a interação de maneira previsível e tipada. A integração HTTP permite que cada linguagem se concentre em suas características, com o custo adicional de converter dados e sincronizar os estados das camadas.
+
+Quando o construtor `Jogada` de `Consulta` passou a carregar o amigo e a posição (`Main.elm:63`), para que o update soubesse qual cadeira destacar em caso de conflito (`Main.elm:317-337`), o compilador do Elm apontou na hora todos os lugares que ainda usavam a forma antiga, inclusive os quatro testes de `MainTest.elm`. Numa linguagem dinâmica esse erro só apareceria em tempo de execução. No Prolog, o contrário: acrescentar uma mania nova foi só escrever mais um fato `mania/2` (`bce.pl:94-100`) e uma cláusula de `mania_vale/4` (`bce.pl:177-194`), sem mexer em `solve/4` nem em `hint/4`, porque a busca vem do CLP(FD).
