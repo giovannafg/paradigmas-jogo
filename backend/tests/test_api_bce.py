@@ -54,6 +54,10 @@ def test_nova_fase(dificuldade):
     linhas, colunas, num_amigos = NIVEIS[dificuldade]
     assert fase["mesa"]["linhas"] == linhas
     assert fase["mesa"]["colunas"] == colunas
+    # A porta permanece no canto superior direito em qualquer dificuldade.
+    portas = [obj for obj in fase["mesa"]["objetos"] if obj["objeto"] == "porta"]
+    assert len(portas) == 1
+    assert (portas[0]["linha"], portas[0]["coluna"]) == (0, colunas - 1)
     assert len(fase["amigos"]) == num_amigos
     assert {f["amigo"] for f in fase["fixos"]} <= set(fase["amigos"])
     assert {m["amigo"] for m in fase["manias"]} == set(fase["amigos"])
