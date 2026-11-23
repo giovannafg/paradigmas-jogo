@@ -476,12 +476,16 @@ fase_candidata(Nivel, Mesa, Amigos, Sentados) :-
     length(Sentados, N),
     N =< MaxSentados.
 
+% A porta fica sempre na primeira linha e na ultima coluna.
+% A tomada e a decoracao nao podem ocupar a posicao da porta.
 objetos_aleatorios(Linhas, Colunas, Objetos) :-
+    ColunaPorta is Colunas - 1,
     findall([L, C], (between(1, Linhas, L1), L is L1 - 1,
-                     between(1, Colunas, C1), C is C1 - 1), Cadeiras),
-    random_permutation(Cadeiras, [[LP, CP], [LT, CT], [LD, CD] | _]),
+                     between(1, Colunas, C1), C is C1 - 1,
+                     (L =\= 0 ; C =\= ColunaPorta)), CadeirasDisponiveis),
+    random_permutation(CadeirasDisponiveis, [[LT, CT], [LD, CD] | _]),
     random_member(Decoracao, [janela, estante]),
-    Objetos = [[porta, LP, CP], [tomada, LT, CT], [Decoracao, LD, CD]].
+    Objetos = [[porta, 0, ColunaPorta], [tomada, LT, CT], [Decoracao, LD, CD]].
 
 solucao_aleatoria(Mesa, Amigos, Solucao) :-
     restricoes(Mesa, Amigos, [], Solucao),

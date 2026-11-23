@@ -1,36 +1,6 @@
-<!--
-  TEMPLATE DO RELATÓRIO DE ENTREGA: Paradigmas de Programação
-
-  Como usar:
-  - Copie este arquivo para a raiz do repositório do grupo, com o nome
-    RELATORIO.md, e preencha todas as seções.
-  - Os textos entre <!- - e - -> (como este) são instruções. Eles não
-    aparecem quando o arquivo é visualizado, mas APAGUE-OS antes de entregar.
-  - Troque tudo o que estiver entre [colchetes].
-  - Seja direto. Frases curtas e listas valem mais que parágrafos longos.
-    Um relatório típico cabe em 4 a 8 páginas.
-  - O relatório e o código são avaliados juntos. Sempre que possível,
-    aponte para o código (arquivo e linha) em vez de descrevê-lo. Os
-    critérios de avaliação estão em AVALIACAO.md.
-  - ANTES DE ENTREGAR, rode o validador na raiz do repositório:
-
-        uv run scripts/validar_entrega.py
-
-    Ele confere a FORMA do relatório (comentários apagados, colchetes
-    preenchidos, tabelas bem formadas, seções presentes, arquivos
-    existentes), não o conteúdo. Corrija todos os ERROS apontados.
--->
-
 # Mesa da BCE
 
 ## 1. Identificação
-
-<!--
-  Os grupos têm de 3 a 7 pessoas (5, em média). A tabela abaixo tem 5
-  linhas: adicione ou remova linhas conforme o tamanho do seu grupo, aqui e
-  na seção 10. Os grupos podem misturar alunos das turmas das 14h e das 16h:
-  indique a turma de CADA integrante.
--->
 
 | Nome completo | Matrícula | Turma (14h/16h) | Usuário GitHub |
 |---------------|-----------|-----------------|----------------|
@@ -46,197 +16,117 @@
 - **Nome do grupo:** Os Sem Agenda
 
 - **Repositório:** [https://github.com/giovannafg/paradigmas-jogo](https://github.com/giovannafg/paradigmas-jogo)
-- **Commit ou tag entregue:** [`a1b2c3d` ou `v1.0`]
-  <!--
-    O avaliador vai olhar exatamente esta versão. Para criar uma tag:
-      git tag v1.0 && git push origin v1.0
-  -->
+- **Commit ou tag entregue:** `d3cc72c` (registrado no relatório original; confirmar se corresponde ao código final)
+
 - **Ponto de partida:** jogo inventado
 
-- **Slides da apresentação oral:** [`docs/apresentacao.pdf` | link externo | não há]
-  <!--
-    No final do semestre, cada grupo faz uma apresentação oral de 15
-    minutos. Slides são opcionais; se o grupo usar, coloque o arquivo no
-    repositório (de preferência em PDF) e indique o caminho aqui.
-  -->
+- **Slides da apresentação oral:** `docs/apresentacao.pdf` 
+  
 
 ## 2. Resumo
 
-<!--
-  De 3 a 5 linhas: o que o sistema faz, para quem, e qual problema o
-  Prolog resolve nele. Quem ler só esta seção deve entender o projeto.
--->
+A **Mesa da BCE** é um quebra-cabeça lógico para navegador: o jogador precisa sentar os integrantes de um grupo de estudos em cadeiras de uma sala, respeitando simultaneamente as manias de cada personagem. O **Prolog** define as regras, avalia as jogadas, gera fases com solução única, resolve estados e fornece dicas; o **Elm** mantém o estado da interface e renderiza o tabuleiro; o **FastAPI/Python** realiza a integração via HTTP e Janus.
 
-A Mesa da BCE é um quebra-cabeça de lógica para o navegador: os integrantes do grupo vão estudar juntos numa mesa da Biblioteca Central e o jogador precisa sentar cada um numa cadeira de modo que todas as manias sejam respeitadas ao mesmo tempo. O Prolog é o cérebro do jogo enquanto o Elm desenha a mesa e controla a partida. O Python só faz a ponte HTTP entre os dois. As regras completas estão em `docs/REGRAS.md`.
+O tabuleiro tem três níveis: **fácil (2×3, quatro personagens)**, **médio (3×3, cinco)** e **difícil (3×4, sete)** (`backend/prolog/bce.pl:460-462`). As mesas são desenhadas em linhas e colunas, com sprites de personagens e da tomada; a porta fica logicamente no canto superior direito e seu marcador aparece ao lado da primeira linha. A interface disponibiliza modo claro/noturno, seleção de dificuldade, dicas, solução automática, reinício, rolagem da lista de personagens e indicação visual de conflitos de regras.
+
+As regras completas encontram-se em `docs/REGRAS.md`.
 
 ![Captura de tela do sistema](docs/captura.png)
-<!-- Uma ou duas capturas de tela da interface. Crie a pasta docs/ se precisar. -->
 
 ## 3. Como executar
 
-<!--
-  Teste estas instruções numa máquina "limpa" (ou peça a um colega de
-  outro grupo). Se o avaliador não conseguir rodar o sistema, o resto do
-  trabalho não pode ser verificado.
--->
-
-**Requisitos** (com as versões que o grupo usou):
-
-- SWI-Prolog 10.0.2 (qualquer 9.2 ou mais novo serve; o `swipl` precisa estar no PATH)
-- Node.js 24.14 com `npm` (20 ou mais novo serve); o compilador do Elm 0.19.2 e o `elm-test` são instalados pelo `npm`, sem nada global
-- uv 0.11, que instala sozinho o Python 3.14 do backend
-
-**Instalação e execução:**
+**Requisitos:** SWI-Prolog 10.0.2 (9.2+), Node.js 24.14 com npm (20+), uv 0.11 e Python gerenciado pelo uv. Essas versões foram registradas pelo grupo; não foram verificadas nesta revisão.
 
 ```sh
 git clone https://github.com/giovannafg/paradigmas-jogo.git
 cd paradigmas-jogo
-make install    # uma vez só: uv sync no backend e npm install no frontend
-make dev        # sobe backend (porta 8000) e frontend (porta 5173)
+make install
+make dev
 ```
 
-Depois, abra http://localhost:5173, escolha a dificuldade e clique em
-**Nova fase**. A documentação interativa da API fica em
-http://localhost:8000/docs.
+Acesse `http://localhost:5173`; a documentação da API fica em `http://localhost:8000/docs`. O frontend solicita uma fase fácil ao iniciar; as dificuldades podem ser trocadas pelos botões na interface.
 
-Sem `make` (comum no Windows), use dois terminais:
+**No Windows, sem `make`:**
 
 ```sh
-# terminal 1
+# Terminal 1 (backend)
 cd backend
 uv sync
 uv run fastapi dev app/main.py
 
-# terminal 2
+# Terminal 2 (frontend, a partir da raiz do projeto)
 cd frontend
 npm install
 npm run dev
 ```
 
-Para brincar só com o Prolog, sem o resto do sistema:
+**Execução isolada do Prolog e testes:**
 
 ```sh
 swipl backend/prolog/bce.pl
-?- generate(facil, Mesa, Amigos, Sentados), solve(Mesa, Amigos, Sentados, S).
-```
+# No interpretador: generate(facil, Mesa, Amigos, Sentados), solve(Mesa, Amigos, Sentados, Solucao).
 
-**Testes:**
-
-```sh
-make test       # roda os três grupos abaixo
-```
-
-ou, separadamente:
-
-```sh
-swipl -g run_tests -t halt backend/prolog/test_bce.pl   # plunit (Prolog)
-cd backend && uv run pytest                             # rotas da API
-cd frontend && npx elm-test                             # Elm
+make test
+# ou separadamente:
+swipl -g run_tests -t halt backend/prolog/test_bce.pl
+cd backend && uv run pytest
+cd frontend && npx elm-test
 ```
 
 **Testado em:** Windows 11, macOS 27.0.1 e Ubuntu 26.04.1.
 
 ## 4. Arquitetura
 
-<!--
-  Um diagrama simples (pode ser em texto) mostrando as partes do sistema e
-  como elas se comunicam. Diga em uma frase a responsabilidade de cada parte.
--->
-
-```
-┌──────────────────────┐   HTTP/JSON   ┌───────────────────┐  janus  ┌───────────────────────┐
-│ Navegador            │ ────────────▶ │ FastAPI (Python)  │ ──────▶ │ SWI-Prolog            │
-│ Elm + daisyUI (Vite) │ ◀──────────── │ backend/app/      │ ◀────── │ bce_api.pl ──▶ bce.pl │
-└──────────────────────┘               └───────────────────┘         └───────────────────────┘
-  estado da partida e tela            só repassa e valida o           regras, gerador,
-                                      formato do JSON                 resolvedor e dica
+```text
+Navegador (Elm + CSS/SVG, Vite)
+      | HTTP/JSON
+      v
+FastAPI / Pydantic (backend/app/main.py)
+      | Janus via backend/app/prolog.py
+      v
+SWI-Prolog (backend/prolog/bce_api.pl -> bce.pl)
 ```
 
-O fluxo de uma jogada: o jogador clica num amigo e numa cadeira; o
-`Main.elm` faz um `POST /api/fase/jogada` pelo `Api.elm`; o `main.py`
-valida o formato com Pydantic e chama o `bce_api.pl` pelo janus; o
-`bce_api.pl` converte as strings em átomos e no termo `mesa/3` e pergunta
-ao `bce.pl` se a jogada vale e como fica cada mania; a resposta volta como
-JSON e o Elm redesenha a mesa com ✅ e ❌.
+O jogador seleciona um personagem e uma cadeira. `Main.elm` atualiza a interface e, quando necessário, chama `Api.elm`, que envia JSON para `/api/fase/jogada`. O FastAPI valida o pedido, chama a ponte Janus/Prolog e retorna um estado com `sentados`, `status` das manias e `venceu`. O Elm atualiza os sprites e as mensagens sem recalcular as manias, que continuam sob responsabilidade do Prolog.
 
-| Parte  | Responsabilidade | Arquivos principais |
-|--------|------------------|---------------------|
-| Prolog | Toda a regra do jogo: manias como fatos, tradução em restrições CLP(FD), validação de estados e jogadas, status das manias, vitória, gerador com solução única, resolvedor e dica | `backend/prolog/bce.pl`, `backend/prolog/bce_api.pl` (tradução JSON ↔ termos), `backend/prolog/test_bce.pl` |
-| Elm    | Estado da partida (seleção, dicas usadas, estrelas, erros), desenho da mesa e dos cards, chamadas HTTP e conversão do JSON em tipos do domínio | `frontend/src/Main.elm` (Model, update, view), `frontend/src/Bce.elm` (tipos do domínio), `frontend/src/Api.elm` (HTTP e JSON) |
-| Python | Só integração: expõe os predicados como rotas HTTP e recusa JSON fora do formato antes de chamar o Prolog | `backend/app/main.py`, `backend/app/prolog.py` |
-
-O visual fica em `frontend/src/style.css`. Os arquivos do Sudoku que vieram
-do template (`sudoku.pl`, `Sudoku.elm`, as rotas `/api/generate`,
-`/api/solve` e `/api/hint`, o `style-simples.css` e os testes
-correspondentes) foram removidos na issue #14: o repositório só tem o código
-do nosso jogo.
+| Parte | Responsabilidade | Arquivos |
+|---|---|---|
+| Prolog | Base de conhecimento, restrições CLP(FD), geração, avaliação das manias, dicas e solução | `backend/prolog/bce.pl`, `bce_api.pl`, `test_bce.pl` |
+| Elm | Tipos do domínio, estado da partida, controles, renderização, feedback e HTTP | `frontend/src/Bce.elm`, `Main.elm`, `Api.elm` |
+| JavaScript/CSS/SVG | Inicialização do Elm, persistência do tema no navegador, estilo pixel art e sprites | `frontend/src/main.js`, `style.css`, `frontend/public/sprites/` |
+| Python | Validação e exposição das rotas HTTP e integração com Prolog | `backend/app/main.py`, `backend/app/prolog.py` |
 
 ## 5. Parte em Prolog
 
 ### 5.1 Predicados principais
 
-<!--
-  Os predicados mais importantes, com o local no código. Use a notação
-  nome/aridade e indique entradas (+) e saídas (-), como na documentação
-  do SWI-Prolog.
--->
-
 | Predicado | Local | O que faz |
-|-----------|-------|-----------|
-| `solve(+Mesa, +Amigos, +Sentados, -Solucao)` | `bce.pl:434` | Completa a mesa a partir de quem já está sentado: impõe as restrições e só então busca, com `labeling([ff], Vars)`. Falha se não houver solução |
-| `count_solutions(+Mesa, +Amigos, +Sentados, +Limite, -N)` | `bce.pl:441` | Conta as soluções até um limite. É o que permite exigir solução única sem enumerar todas |
-| `generate(+Nivel, -Mesa, -Amigos, -Sentados)` | `bce.pl:453` | Sorteia uma fase com solução única no nível `facil`, `medio` ou `dificil`, e devolve quem já começa sentado |
+|---|---|---|
+| `mania(?Amigo, ?Mania)` | `bce.pl:94` | Registra as regras dos sete personagens como fatos. |
+| `restricoes(+Mesa, +Amigos, +Sentados, -Lugares)` | `bce.pl:270` | Impõe as restrições de cadeiras, dimensões e manias com CLP(FD). |
+| `estado_valido(+Mesa, +Amigos, +Sentados)` | `bce.pl:338` | Verifica se o estado é estruturalmente válido. |
+| `status_manias(+Mesa, +Amigos, +Sentados, -Status)` | `bce.pl:391` | Classifica cada mania como `ok`, `violada` ou `pendente`. |
+| `solve(+Mesa, +Amigos, +Sentados, -Solucao)` | `bce.pl:434` | Completa a mesa respeitando as regras; usa `labeling([ff], Vars)`. |
+| `count_solutions(+Mesa, +Amigos, +Sentados, +Limite, -N)` | `bce.pl:441` | Conta soluções até o limite para detectar unicidade. |
+| `generate(+Nivel, -Mesa, -Amigos, -Sentados)` | `bce.pl:453` | Gera uma fase candidata válida e de solução única. |
+| `objetos_aleatorios(+Linhas, +Colunas, -Objetos)` | `bce.pl:481` | Fixa a porta em `(0, Colunas-1)` e sorteia tomada e decoração nas demais cadeiras. |
+| `hint(+Mesa, +Amigos, +Sentados, -Dica)` | `bce.pl:542` | Busca uma jogada forçada e sua justificativa, se houver. |
 
 ### 5.2 Conceitos do paradigma lógico utilizados
 
-<!--
-  Marque o que o projeto usa DE FATO e indique onde. Não é preciso usar
-  tudo; é preciso explicar bem o que foi usado.
--->
-
-- [ ] Fatos e regras como base de conhecimento: [onde]
-- [ ] Unificação e casamento de padrões: [onde]
-- [x] Recursão (inclusive sobre listas): `ancoras/5` (`bce.pl:503`) e
-  `enxuga/5` (`bce.pl:511`) percorrem a lista de candidatos a âncora, uma
-  cadeira por chamada; `rotulo_aleatorio/1` (`bce.pl:491`) percorre as
-  variáveis de posição.
-- [x] Backtracking e múltiplas soluções: `solve/4` é `nondet` e entrega as
-  soluções sob demanda (`bce.pl:434`), o que é exatamente o que
-  `count_solutions/5` precisa. No gerador, `between(1, 50, _)`
-  (`bce.pl:455`) usa o backtracking para tentar outra fase candidata quando
-  a anterior não fecha.
-- [x] `findall/3`, `bagof/3`, `setof/3` ou similares:
-  `aggregate_all(count, limit(Limite, ...), N)` em `count_solutions/5`
-  (`bce.pl:441`), que para de contar no limite; `findall/3` na lista de
-  amigos (`bce.pl:466`), nas cadeiras da mesa (`bce.pl:480`) e no domínio
-  que sobrou de uma variável (`bce.pl:496`).
-- [x] Corte (`!`) ou negação (`\+`), e por que foram necessários: o corte em
-  `generate/4` (`bce.pl:457`) fixa a primeira fase candidata que serviu. Sem
-  ele, pedir outra resposta faria o `between/3` gerar uma fase diferente, e
-  o gerador deixaria de ser determinístico para quem chama.
-- [x] Programação por restrições (CLP(FD) ou outra): a busca do resolvedor é
-  `labeling([ff], Vars)` (`bce.pl:438`) — a estratégia `ff` (*first fail*)
-  escolhe primeiro a cadeira com menos opções. No gerador, `fd_dom/2`
-  (`bce.pl:495`) lê o domínio que as restrições deixaram para sortear um
-  valor ainda possível. A modelagem das manias como restrições está na
-  seção da issue #4.
-- [ ] Predicados de ordem superior (`maplist`, `foldl`, `include`...): [onde]
-- [x] Outro: `random_permutation/2` e `random_member/2` (`bce.pl:467`,
-  `bce.pl:483`) para que duas fases do mesmo nível não saiam iguais, e
-  `selectchk/3` (`bce.pl:513`) para remover uma âncora específica da lista.
+- [x] **Fatos e regras:** `amigo/1`, `objeto/1` e `mania/2` (`bce.pl:76-100`) definem entidades e manias. `mania_vale/4` (`bce.pl:177`) interpreta as condições declaradas.
+- [x] **Unificação e casamento de padrões:** as cláusulas de `mania_vale/4` diferenciam termos como `sem_vizinhos`, `perto_de(Amigo)` e `na_cadeira_de(Objeto)`; `lugar_inicial/5` (`bce.pl:282`) unifica personagens e coordenadas.
+- [x] **Recursão:** `rotulo_aleatorio/1` (`bce.pl:495`) percorre variáveis; `ancoras/5` (`bce.pl:507`) adiciona âncoras e `enxuga/5` (`bce.pl:515`) remove as dispensáveis.
+- [x] **Backtracking e múltiplas soluções:** `solve/4` pode encontrar respostas sucessivas. `between(1,50,_)` (`bce.pl:455`) permite tentar outra fase candidata.
+- [x] **Coleta e agregação:** `aggregate_all(count, limit(...), N)` (`bce.pl:441`) limita a contagem; `findall/3` é usado na seleção de amigos, lugares e domínios.
+- [x] **Corte e negação:** `!/0` em `generate/4` (`bce.pl:457`) fixa a primeira candidata aceita; `\+/1` é usado em verificações de estado e busca de dicas.
+- [x] **CLP(FD):** restrições de domínios, exclusividade de cadeiras, reificação `#<==>` e `labeling([ff], Vars)` (`bce.pl:126`, `bce.pl:270-302`, `bce.pl:438`).
+- [x] **Predicados de ordem superior:** `maplist/2`, `maplist/3` em `restricoes/4` e seu auxiliar (`bce.pl:270-279`); `include/3`, `exclude/3` e `partition/4` também aparecem no código.
+- [x] **Outros:** `random_permutation/2`, `random_member/2` para variar fases, `selectchk/3` na redução de âncoras e estados `ok/violada/pendente` derivados das mesmas regras.
 
 ### 5.3 Trecho em destaque
 
-<!--
-  Escolha o trecho de Prolog de que o grupo mais se orgulha (ou o mais
-  difícil). Cole o código e explique como ele funciona: o que é declarado,
-  como o Prolog chega à resposta, e por que essa solução é "lógica" e não
-  uma tradução de um algoritmo imperativo.
--->
-
-O gerador de fases (`bce.pl:453`). Ele tem de entregar uma fase com
-**solução única**: nem frouxa, com várias formas de sentar todo mundo, nem
-travada, sem nenhuma.
+O gerador parte de uma configuração solucionável e tenta construir um enigma com **solução única**, evitando tanto fases ambíguas quanto fases impossíveis. As âncoras são participantes que já começam sentados.
 
 ```prolog
 generate(Nivel, Mesa, Amigos, Sentados) :-
@@ -245,7 +135,6 @@ generate(Nivel, Mesa, Amigos, Sentados) :-
     fase_candidata(Nivel, Mesa, Amigos, Sentados),
     !.
 
-%   Fixa amigos da solução, um por vez, até a solução ficar única.
 ancoras(Mesa, Amigos, Candidatos, Ancoras0, Ancoras) :-
     (   count_solutions(Mesa, Amigos, Ancoras0, 2, 1)
     ->  Ancoras = Ancoras0
@@ -253,7 +142,6 @@ ancoras(Mesa, Amigos, Candidatos, Ancoras0, Ancoras) :-
         ancoras(Mesa, Amigos, Resto, [Lugar | Ancoras0], Ancoras)
     ).
 
-%   Tira as âncoras que não são necessárias para a solução continuar única.
 enxuga(_, _, [], Ancoras, Ancoras).
 enxuga(Mesa, Amigos, [Lugar | Resto], Ancoras0, Ancoras) :-
     selectchk(Lugar, Ancoras0, Sem),
@@ -263,94 +151,54 @@ enxuga(Mesa, Amigos, [Lugar | Resto], Ancoras0, Ancoras) :-
     ).
 ```
 
-O caminho é o inverso do que eu faria numa linguagem imperativa. Lá eu
-montaria uma fase e depois testaria se ela presta, repetindo até dar sorte.
-Aqui parto de uma **solução** — sorteada em `solucao_aleatoria/3`
-(`bce.pl:486`) — e vou **escondendo** gente dela.
+`ancoras/5` adiciona posições da solução até que só reste uma configuração válida. `enxuga/5` tenta retirar essas posições sem perder a unicidade. `count_solutions/5` precisa encontrar no máximo duas soluções para distinguir uma solução única de várias. O Prolog cuida da busca e do backtracking: o programa declara as restrições que definem a validade do estado, em vez de implementar manualmente uma sequência de tentativas de cadeiras. O limite de 50 candidatas em `generate/4` é uma **limitação**: se nenhuma passar, a geração falha.
 
-`ancoras/5` senta um amigo por vez, na ordem sorteada, e a cada passo
-pergunta quantas soluções ainda existem. Quando a resposta é exatamente 1, a
-fase ficou determinada e a recursão para. Depois `enxuga/5` faz a passagem
-contrária: tenta remover cada âncora e só a devolve para a lista se a
-solução deixar de ser única — é o que evita entregar uma fase com gente
-sentada à toa.
-
-O que faz isso ser lógico, e não um algoritmo traduzido:
-
-- **Nunca escrevi como achar a solução.** `solve/4` (`bce.pl:434`) impõe as
-  restrições das manias e chama `labeling([ff], Vars)`. Quem decide a ordem
-  de tentar as cadeiras é o resolvedor de restrições, com a estratégia
-  *first fail*; eu só declarei o que é uma mesa válida.
-- **Contar sem enumerar.** "Solução única" não exige todas as soluções:
-  `count_solutions/5` (`bce.pl:441`) envolve o `solve/4` num
-  `aggregate_all(count, limit(2, ...), N)`. O Prolog para na segunda
-  solução, porque é só isso que distingue única de mais de uma. Em código
-  imperativo eu teria escrito um contador e um laço com `break`.
-- **Sortear sem perder o backtracking.** `rotulo_aleatorio/1` (`bce.pl:491`)
-  substitui o `label/1` padrão: lê com `fd_dom/2` o domínio que as
-  restrições deixaram e tenta os valores em ordem sorteada com `member/2`.
-  Por ser `member/2`, e não uma atribuição, se aquele valor não levar a nada
-  o Prolog volta e tenta o próximo sozinho.
-
-A parte menos elegante é o `between(1, 50, _)` com o corte: às vezes o
-sorteio cai numa mesa em que a fase não fecha, e aí tentar outra sai mais
-barato que insistir. O corte fixa a primeira que serviu.
+Na atualização visual, o gerador também passou a fixar o objeto lógico `porta` na primeira linha e última coluna (`bce.pl:481-488`): `(0,2)` nos níveis fácil e médio e `(0,3)` no difícil. O sprite mostrado no frontend não altera essa referência lógica. A tomada e a decoração são sorteadas em outras posições.
 
 ## 6. Parte em Elm
 
 ### 6.1 Modelo e mensagens
 
-<!--
-  Os tipos centrais do programa: o Model, o tipo Msg e os custom types do
-  domínio. Explique as escolhas: por que um custom type e não um Bool, por
-  que Maybe ou Result, etc.
--->
-
-**Domínio (`frontend/src/Bce.elm`).** Módulo puro, sem HTTP nem HTML. Cada
-pergunta do jogo é um custom type fechado, para o compilador recusar valores
-inválidos:
-
-- `Amigo` e `Objeto` (`Bce.elm:63`, `Bce.elm:73`): lista fechada, em vez de
-  `String`. Um `case` que esquece a Mayara não compila.
-- `Mania` (`Bce.elm:217`): cada construtor carrega só o alvo que usa
-  (`SemVizinhos` não tem alvo, `PertoDe` exige um `Amigo`). Com um record de
-  campos opcionais seria possível montar "perto de" sem ninguém.
-- `StatusMania` (`Bce.elm:384`): `Respeitada | Violada | Pendente`, em vez de
-  `Maybe Bool`, cujo `Nothing` não diz o que significa.
-- `Rodada` (`Bce.elm:432`): `Jogando | Venceu Estrelas`. A vitória carrega as
-  estrelas, então não existe "venceu sem nota".
-- `Recusa` (`Bce.elm:276`): o motivo de uma jogada recusada; `sentar` e
-  `levantar` devolvem `Result Recusa (List Lugar)` (`Bce.elm:310`,
-  `Bce.elm:331`) no lugar de exceção ou `Bool` ignorado.
+O módulo `Bce.elm` contém tipos e funções puras de domínio; `Api.elm` codifica/decodifica o JSON; `Main.elm` reúne o estado da tela, atualizações e renderização. Os tipos fechados evitam combinações inválidas e os `case` exaustivos ajudam o compilador a detectar estados não tratados.
 
 ```elm
-[type alias Model = ...]
-[type Msg = ...]
+type alias Model =
+    { tela : Tela
+    , darkTheme : Bool
+    , aguardando : Bool
+    }
+
+type Tela
+    = Inicio
+    | FalhaInicial String
+    | PartidaAberta Partida
+
+type Msg
+    = AcaoJogo Acao
+    | RecebeuFase Dificuldade (Result String Fase)
+    | RecebeuEstado Consulta (Result String Estado)
+    | RecebeuDica (Result String Dica)
+    | TemaAlterado Bool
+    | DescerPersonagens
+    | RecebeuPosicaoPersonagens (Result Browser.Dom.Error Browser.Dom.Viewport)
+    | RolagemConcluida
 ```
 
-[Explicação das escolhas.]
+Trechos de `Main.elm:17-77`. `Model` guarda a tela, o tema e se há requisição pendente. O registro `Partida` (`Main.elm:30`) guarda fase, dificuldade, estado, seleção, desfecho, dicas, conflito recente, erro e aviso. `Tela` impede que uma partida inexistente seja tratada como jogável; `Result` separa sucesso e falha de HTTP; `Maybe` indica dica ou aviso ausente. `Acao` representa as ações do jogador, enquanto `Msg` também representa respostas HTTP e a rolagem da lista.
+
+Em `Bce.elm`, destacam-se `Amigo` (`:63`), `Objeto` (`:73`), `Mania` (`:217`), `Recusa` (`:276`), `StatusMania` (`:384`) e `Rodada` (`:432`). `sentar` e `levantar` retornam `Result Recusa (List Lugar)` (`:310`, `:331`), sem exceções para regras de ocupação.
 
 ### 6.2 Conceitos do paradigma funcional utilizados
 
-- [ ] Arquitetura Elm (Model, update, view): [onde]
-- [x] Custom types e `case` exaustivo: `Amigo` (`Bce.elm:63`), `Mania`
-  (`Bce.elm:217`), `Recusa` (`Bce.elm:276`); `case` sem `_` em
-  `nomeDoAmigo` e `recusaParaTexto`. Se alguém adicionar um amigo, o
-  compilador aponta cada `case` que precisa tratá-lo.
-- [x] `Maybe` e `Result` no lugar de null e exceções: `sentar` e `levantar`
-  devolvem `Result Recusa` (`Bce.elm:310`, `Bce.elm:331`); `amigoDeTexto`
-  devolve `Maybe Amigo` (`Bce.elm:161`); `maniaDeTexto` devolve
-  `Result String Mania` (`Bce.elm:556`).
-- [x] Funções de ordem superior e aplicação parcial: `List.filter`,
-  `List.map` e `List.concatMap` em `posicoes` (`Bce.elm:251`) e
-  `semAssento` (`Bce.elm:345`); `Result.map PertoDeObjeto`, em que o
-  construtor é usado como função (`Bce.elm:560`).
-- [x] Composição (`|>`, `>>`): `|>` em `amigoDeTexto` (`Bce.elm:161`) e em
-  `maniaDeTexto` (`Bce.elm:570`).
-- [ ] Decoders e encoders JSON: [onde]
-- [ ] Comandos e subscriptions (efeitos controlados): [onde]
-- [ ] Imutabilidade e atualização de records: [onde]
-- [ ] Outro: [...]
+- [x] **Arquitetura Elm:** `main`, `init`, `update` e `view` (`Main.elm:80`, `:90`, `:96`, `:408`) implementam o ciclo Model–Update–View.
+- [x] **Custom types e `case` exaustivo:** `Amigo`, `Mania`, `Recusa`, `Tela`, `Acao` e `Msg` representam conjuntos fechados de possibilidades.
+- [x] **`Maybe` e `Result`:** `Bce.amigoDeTexto` (`:161`) devolve `Maybe Amigo`, `Bce.maniaDeTexto` (`:556`) devolve `Result String Mania`, e as respostas da API são recebidas como `Result String ...`.
+- [x] **Funções de ordem superior:** `List.map`, `List.filter`, `List.concatMap`, `List.foldr` e `Result.map` aparecem no domínio, no processamento de manias e na renderização.
+- [x] **Composição:** operadores `|>` em `Bce.elm`, `Main.elm` e `Api.elm` compõem transformações sem variáveis mutáveis.
+- [x] **JSON:** decoders e encoders em `Api.elm:162-382` traduzem fase, lugares, objetos, status, dicas e pedidos HTTP para tipos do domínio.
+- [x] **Efeitos controlados:** `Cmd Msg` e `Http` no `Api.elm` realizam requisições; `Browser.Dom` e `Task` em `Main.elm` controlam a rolagem da lista. `subscriptions = always Sub.none` no programa atual.
+- [x] **Imutabilidade:** atualizações `{ model | ... }` e `{ partida | ... }` em `Main.elm` criam novos estados em vez de mutar objetos existentes.
+- [x] **Separação de lógica e apresentação:** `Bce.elm` reúne operações puras, enquanto CSS/SVG e `Main.view` cuidam do aspecto da interface.
 
 ### 6.3 Trecho em destaque
 
@@ -373,170 +221,102 @@ maniaDeTexto tipo alvo =
         _ ->
             Err ("Mania desconhecida: " ++ tipo)
 
-
 combina : List (Result e a) -> Result e (List a)
 combina =
     List.foldr (Result.map2 (::)) (Ok [])
 ```
 
-(`Bce.elm:556` e `Bce.elm:626`, trecho resumido; o original tem os 7 tipos.)
+Trecho **resumido** de `Bce.elm:556` e `:626`; o código-fonte trata os sete tipos de mania. O `case` sobre uma tupla exige combinação válida entre o nome e a lista de alvos. `combina` transforma uma lista de resultados em um único resultado, propagando um erro caso exista, sem laço explícito nem mutação.
 
-O JSON chega como texto solto (`"longe_de"`, `["joao"]`) e precisa virar um
-`Mania`, que só admite valores válidos. O `case` olha o tipo e o alvo juntos
-(uma tupla), então `"sem_vizinhos"` só casa com lista vazia e
-`"perto_de_objeto"` só com um elemento. Qualquer combinação fora dessas cai
-no `_` e vira `Err`, em vez de um valor inválido.
-
-O ponto mais funcional é `combina`: transforma uma `List (Result e a)` em um
-`Result e (List a)` sem `if` nem laço. `foldr` percorre a lista e `Result.map2
-(::)` empilha cada resultado se todos deram `Ok`; o primeiro `Err` vence. Isso
-reaproveita as peças pequenas (`amigoOuErro`, `Result.map`) em vez de escrever
-a checagem à mão.
+As atualizações do frontend mantêm esse modelo: `viewLinhaMesas` cria as linhas da matriz; `viewCadeira` escolhe o sprite correspondente ao personagem e à tomada; `viewMensagens` mostra a regra em conflito; o destaque amarelo indica dicas e o vermelho indica violações; `TemaAlterado` troca a paleta; e `DescerPersonagens` solicita ao `Browser.Dom` o deslocamento da lista. Os sprites ficam em `frontend/public/sprites/` e o tema é persistido por `frontend/src/main.js` usando `localStorage`.
 
 ## 7. Integração
 
-<!--
-  Curto: a parte Python não é avaliada. Liste as rotas ou a forma de
-  comunicação e o formato dos dados trocados. Se o grupo não usou Python,
-  explique como Elm e Prolog se comunicam.
--->
+O navegador se comunica com FastAPI por HTTP/JSON. O backend valida o formato com Pydantic, chama `bce_api.pl` via Janus e converte os dados de volta para JSON. O Prolog é a fonte das regras; o Python não calcula manias.
 
-O Elm chama o backend em FastAPI, que chama o Prolog pelo janus. O janus só
-troca inteiros, strings e listas, então o `bce_api.pl` traduz o JSON para
-os átomos e o termo `mesa/3` do `bce.pl`. Nenhuma regra do jogo fica no
-Python. O formato completo do JSON está em `docs/API.md`.
+| Rota | Entrada | Saída | Lógica Prolog |
+|---|---|---|---|
+| `POST /api/fase/nova` | `{dificuldade}` | Mesa, amigos, fixos e manias | `generate/4` |
+| `POST /api/fase/estado` | `{fase, sentados}` | Estado, status e vitória | `estado_valido/3`, `status_manias/4`, `venceu/3` |
+| `POST /api/fase/jogada` | Fase, sentados, amigo, linha e coluna | Estado após jogada | `jogada_valida/5` e estado |
+| `POST /api/fase/dica` | `{fase, sentados}` | Amigo, posição e motivo | `hint/4` |
+| `POST /api/fase/resolver` | `{fase, sentados}` | Estado solucionado | `solve/4` |
 
-| Rota / chamada | Entrada | Saída | Predicado Prolog |
-|----------------|---------|-------|------------------|
-| `POST /api/fase/nova` | `{dificuldade}` | Fase: mesa, amigos, fixos, manias | `bce_api:nova_fase/7` → `generate/4`, `mania/2` |
-| `POST /api/fase/estado` | `{fase, sentados}` | Estado: sentados, status das manias, venceu | `bce_api:estado/7` → `estado_valido/3`, `status_manias/4`, `venceu/3` |
-| `POST /api/fase/jogada` | `{fase, sentados, amigo, linha, coluna}` | Estado depois da jogada | `bce_api:jogada/10` → `jogada_valida/5` e os de `estado` |
-| `POST /api/fase/dica` | `{fase, sentados}` | `{amigo, linha, coluna, motivo}` | `bce_api:dica/7` → `hint/4` |
-| `POST /api/fase/resolver` | `{fase, sentados}` | Estado com todos sentados | `bce_api:resolver/7` → `solve/4` |
-
-Todo erro volta como HTTP 422 com uma mensagem para a tela em `detail`:
-JSON fora do formato (o Pydantic recusa antes de chamar o Prolog), estado
-impossível, jogada não permitida, fase completa, fase sem solução ou nenhuma
-jogada obrigatória.
+O formato completo está em `docs/API.md`. Requisições inválidas são respondidas com HTTP 422 pela validação dos modelos ou das regras da API; o Elm apresenta a mensagem de erro retornada.
 
 ## 8. Testes e validação
 
-<!--
-  Como o grupo sabe que o sistema funciona? Testes automatizados (plunit,
-  pytest, elm-test), roteiros de teste manual, casos de borda verificados.
--->
+Existem três conjuntos de testes automatizados no repositório:
 
-- [O que foi testado e como.]
-- [Casos de borda considerados.]
+- **Prolog (plunit):** `backend/prolog/test_bce.pl` cobre validade estrutural do estado, cadeiras ocupadas, regras/manias, vitória, solução, geração, unicidade e dicas. Há testes de coordenadas negativas, cadeiras fora da mesa, personagens desconhecidos e tentativas de sentar em posições ocupadas.
+- **Python (pytest):** `backend/tests/test_api_bce.py` cobre os endpoints de fase, estado, jogada, dica e resolução, incluindo requisições inválidas e os tamanhos dos níveis 2×3, 3×3 e 3×4.
+- **Elm (elm-test):** `frontend/tests/MainTest.elm` e `ApiTest.elm` verificam transições de estado, interações, erros e conversão entre JSON e tipos Elm.
+
+Os comandos de execução estão na seção 3. 
 
 ## 9. Limitações e problemas conhecidos
 
-<!--
-  Seja honesto. Um problema conhecido e bem descrito vale mais que um
-  problema escondido que o avaliador descobre sozinho.
--->
-
-- [Limitação ou bug conhecido, e em que situação acontece.]
-- [O que o grupo faria com mais tempo.]
+- **Geração probabilística:** `generate/4` testa até 50 candidatas. Se nenhuma satisfizer os critérios, a geração pode falhar (`bce.pl:453-457`).
+- **Alguns conflitos são estados intermediários:** o jogo permite sentar personagens ainda que manias sejam violadas, para que o jogador reorganize a mesa. Os estados `violada` e `pendente` não devem ser confundidos; a interface apresenta uma explicação do conflito.
+- **Compatibilidade visual:** a experiência usa sprites SVG e estilos responsivos; a disposição em telas muito estreitas requer validação manual. A porta é um marcador gráfico próximo à mesa superior direita, não um elemento interativo independente.
+- **Persistência:** o tema fica salvo no `localStorage`, mas a partida não possui persistência entre recargas; a inicialização carrega uma nova fase fácil (`Main.elm:90-93`).
+- **Melhorias desejáveis:** automatizar testes da interface, melhorar comportamento da lista ao chegar ao fim e ampliar as verificações de acessibilidade em navegação por teclado e dispositivos móveis.
 
 ## 10. Contribuição de cada integrante
 
-<!--
-  O que cada pessoa fez. Deve ser coerente com o histórico de commits do
-  repositório. Todos os integrantes precisam concordar com esta tabela.
--->
-
 | Integrante | Principais contribuições |
-|------------|--------------------------|
-| [Nome]     | [...] |
-| [Nome]     | [...] |
-| [Nome]     | [...] |
-| [Nome]     | [...] |
-| [Nome]     | [...] |
-
-<!--
-  Além desta tabela, que é do grupo, cada integrante entrega uma avaliação
-  360 graus individual no SEU repositório do GitHub Classroom, em
-  avaliacao-360/<matricula>.md. Veja o modelo em avaliacao-360/TEMPLATE.md.
--->
+|---|---|
+| Arthur Ribeiro e Sousa | Pendente de confirmação pelo integrante. |
+| Felipe Lopes Pedroza | Pendente de confirmação pelo integrante. |
+| Gabriel Dantas Bevilaqua Mendes | Pendente de confirmação pelo integrante. |
+| Gabriel Henrique Castelo Costa | Pendente de confirmação pelo integrante. |
+| Giovanna Felipe Guimarães | Pendente de confirmação pelo integrante. |
+| João Victor Felix Moreira | Pendente de confirmação pelo integrante. |
+| Mayara Marques Silva | Pendente de confirmação pelo integrante. |
 
 ## 11. Fontes, código de terceiros e uso de IA
 
-<!--
-  Declare tudo o que não foi escrito pelo grupo. Declarar não tira pontos;
-  deixar de declarar pode anular o trabalho.
--->
+**Código reaproveitado.** No código existem bibliotecas tanto no frontend quanto no backend. 
 
-**Código reaproveitado.** [Ex.: "Partimos do template do Sudoku. Mantivemos
-a integração Python e a estrutura do frontend; o arquivo `x.pl` e os
-módulos `Y.elm` e `Z.elm` foram escritos pelo grupo."]
+**Referências técnicas:** documentação oficial do [SWI-Prolog](https://www.swi-prolog.org/pldoc/), [Elm](https://guide.elm-lang.org/), [FastAPI](https://fastapi.tiangolo.com/) e [Vite](https://vite.dev/). São referências recomendadas para registrar os conceitos; o grupo deve confirmar quais efetivamente consultou.
 
-**Referências.** [Livros, documentação, tutoriais, repositórios consultados.]
+**Uso de ferramentas de IA:** houve assistência do ChatGPT para alterações do frontend e revisão de documentação. 
 
-**Uso de ferramentas de IA.**
-
-- **Faixa de uso no código:** [nenhum | pontual | auxiliar | intensivo]
-  <!--
-    nenhum: não usou. pontual: autocompletar, dúvidas, explicar erros.
-    auxiliar: trechos gerados pela IA e revisados pelo grupo. intensivo: a
-    IA escreveu a maior parte do código. Veja o efeito em AVALIACAO.md,
-    seção 1.5. Não declarar anula o trabalho; declarar não tira pontos.
-  -->
-
-| Ferramenta | Para que foi usada | Como o grupo verificou o resultado |
-|------------|--------------------|------------------------------------|
-| [Nome ou "nenhuma"] | [...] | [...] |
+| Ferramenta | Para que foi usada | Como o resultado foi ou será verificado |
+|---|---|---|
+| ChatGPT | Sugestões e alterações no frontend (layout, temas, sprites e feedback visual), além da revisão do relatório | Revisão de arquivos, compilação e testes manuais/automatizados pelo grupo; resultados ainda não documentados aqui |
+| Outras ferramentas, se utilizadas | Pendente de declaração pelo grupo | Pendente de confirmação |
 
 ## 12. Apresentação oral
 
-<!--
-  A apresentação tem 15 minutos e acontece no final do semestre. Uma
-  divisão que costuma funcionar: 2 min de contexto, 5 min de demonstração
-  do sistema funcionando, 6 min mostrando o código Prolog e Elm mais
-  interessante, 2 min de limitações e aprendizados. Todos os integrantes
-  devem falar.
+**Slides:** pendente de confirmação; `docs/apresentacao.pdf` 
 
-  Preencha esta seção antes da apresentação.
--->
+**Roteiro sugerido (15 minutos):**
 
-- **Slides:** [mesmo caminho indicado na seção 1, ou "não há"]
-- **Roteiro:**
+| Parte | Duração | Responsáveis |
+|---|:---:|---|
+| Contexto e objetivo | 2 min | Definir pelo grupo |
+| Demonstração dos níveis, temas, dicas e conflitos | 5 min | Definir pelo grupo |
+| Prolog: restrições, geração e unicidade | 3 min | Definir pelo grupo |
+| Elm: tipos, update e renderização | 3 min | Definir pelo grupo |
+| Limitações e aprendizados | 2 min | Definir pelo grupo |
 
-| Parte | Duração | Quem apresenta |
-|-------|:-------:|----------------|
-| [Contexto e objetivo] | [2 min] | [Nome] |
-| [Demonstração] | [5 min] | [Nome] |
-| [Código Prolog] | [3 min] | [Nome] |
-| [Código Elm] | [3 min] | [Nome] |
-| [Limitações e aprendizados] | [2 min] | [Nome] |
+A distribuição de falas deverá ser aprovada por todos os integrantes.
 
 ## 13. Reflexão sobre os paradigmas
 
-<!--
-  De 1 a 3 parágrafos. Perguntas que podem ajudar:
-  - O que ficou mais simples em Prolog do que seria numa linguagem
-    imperativa? E o que ficou mais difícil?
-  - O que o compilador do Elm impediu que desse errado?
-  - Como a forma de pensar mudou entre as duas linguagens?
--->
+No Prolog, a principal vantagem foi modelar o que caracteriza uma configuração correta sem programar todas as tentativas de alocação. As manias funcionam como relações e restrições, e o mecanismo de busca consegue encontrar soluções ou detectar impossibilidade. Em contrapartida, a geração aleatória de fases com solução única e a distinção entre restrições satisfeitas, violadas e pendentes exigiram atenção especial.
 
-[Reflexão.]
+No Elm, a vantagem foi representar o domínio por tipos fechados e controlar os efeitos por mensagens. Em vez de modificar a tela diretamente, cada evento produz um novo estado e a `view` o transforma em interface. Essa arquitetura ajudou a isolar as mudanças visuais — matriz de mesas, sprites, modo noturno, dicas, erros e rolagem — sem reimplementar no navegador as regras do Prolog.
+
+O projeto evidencia a complementaridade entre os paradigmas: o lógico define e procura estados válidos; o funcional organiza a interação de maneira previsível e tipada. A integração HTTP permite que cada linguagem se concentre em suas características, com o custo adicional de converter dados e sincronizar os estados das camadas.
 
 ---
 
-<!--
-  CHECKLIST ANTES DE ENTREGAR (apague esta seção depois de conferir)
+## Pendências para a entrega final
 
-  - [ ] `uv run scripts/validar_entrega.py` termina sem erros.
-  - [ ] Todos os integrantes, com matrícula e turma, estão na seção 1.
-  - [ ] O commit ou tag da seção 1 existe no repositório e é a versão final.
-  - [ ] As instruções da seção 3 funcionam numa máquina sem nada instalado
-        além dos requisitos listados.
-  - [ ] Os locais indicados (arquivo:linha) conferem com o commit entregue.
-  - [ ] As seções 10 e 11 foram revisadas por todo o grupo.
-  - [ ] Se há slides, o arquivo está no repositório e o caminho da seção 1
-        está certo.
-  - [ ] Cada integrante entregou a própria avaliação 360 graus no seu
-        repositório individual, em avaliacao-360/<matricula>.md.
-  - [ ] Nenhum texto entre [colchetes] ou comentário de instrução sobrou.
--->
+- Confirmar **commit/tag** da versão definitiva (o relatório anterior citava `d3cc72c`).
+- Incluir uma captura válida em `docs/captura.png` e definir se haverá slides.
+- Completar a **contribuição individual** dos sete integrantes, com acordo do grupo e histórico de commits.
+- Confirmar **licenças e fontes** de sprites, bibliotecas e referências consultadas, e classificar corretamente o uso de IA.
+- Executar e registrar os resultados dos testes (`make test`) e do validador (`uv run scripts/validar_entrega.py`); revisar referências de linha após quaisquer novas mudanças.
