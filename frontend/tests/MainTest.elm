@@ -74,7 +74,7 @@ suite =
         jogarEDesfazer =
             [ selecionar
             , sentar
-            , RecebeuEstado Jogada (Ok estadoComJoao)
+            , RecebeuEstado (Jogada Joao dica.posicao) (Ok estadoComJoao)
             , sentar
             , RecebeuEstado (Levantada Joao NadaSelecionado) (Ok estadoInicial)
             ]
@@ -95,7 +95,7 @@ suite =
                 \_ ->
                     passar
                         (List.concat (List.repeat quantidade (dicaRecebida ++ jogarEDesfazer))
-                            ++ [ selecionar, sentar, RecebeuEstado Jogada (Ok estadoFinal) ]
+                            ++ [ selecionar, sentar, RecebeuEstado (Jogada Joao dica.posicao) (Ok estadoFinal) ]
                         )
                         |> comPartida
                             (\partida ->
@@ -165,7 +165,7 @@ suite =
                                 )
                , test "erro de jogada preserva estado e seleção para corrigir" <|
                     \_ ->
-                        passar [ selecionar, sentar, RecebeuEstado Jogada (Err "Jogada inválida") ]
+                        passar [ selecionar, sentar, RecebeuEstado (Jogada Joao dica.posicao) (Err "Jogada inválida") ]
                             |> comPartida
                                 (\partida ->
                                     Expect.equal ( estadoInicial, AmigoSelecionado Joao, Just "Jogada inválida" )
@@ -192,7 +192,7 @@ suite =
                     \_ ->
                         passar
                             (dicaRecebida
-                                ++ [ selecionar, sentar, RecebeuEstado Jogada (Ok estadoFinal), AcaoJogo Recomecar, RecebeuEstado Reinicio (Ok estadoInicial) ]
+                                ++ [ selecionar, sentar, RecebeuEstado (Jogada Joao dica.posicao) (Ok estadoFinal), AcaoJogo Recomecar, RecebeuEstado Reinicio (Ok estadoInicial) ]
                             )
                             |> comPartida
                                 (\partida ->
