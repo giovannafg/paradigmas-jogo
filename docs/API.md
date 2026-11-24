@@ -1,7 +1,7 @@
 # API do jogo: formato do JSON
 
-Contrato entre o Elm, o Python e o Prolog para o **Grupo de Estudo na BCE**
-(issue #9). As regras do jogo estão em [REGRAS.md](REGRAS.md).
+Contrato entre o Elm, o Python e o Prolog na **Mesa da BCE**. As regras do
+jogo estão em [REGRAS.md](REGRAS.md).
 
 Todas as rotas são `POST` e recebem e devolvem JSON. A documentação
 interativa fica em http://localhost:8000/docs com o backend rodando.
@@ -12,7 +12,7 @@ interativa fica em http://localhost:8000/docs com o backend rodando.
 Elm  ──JSON──▶  backend/app/main.py      valida o formato (Pydantic)
                 backend/app/prolog.py    chama o Prolog pelo janus
                 backend/prolog/bce_api.pl  converte strings em átomos
-                backend/prolog/bce.pl      as regras (Mayara, #4)
+                backend/prolog/bce.pl      as regras
 ```
 
 O janus só troca inteiros, strings e listas com o Python. Por isso o
@@ -105,7 +105,7 @@ O que muda a cada jogada. Toda rota que mexe no tabuleiro devolve isto.
 Pedido: `{"dificuldade": "facil"}` (`facil`, `medio` ou `dificil`).
 Resposta: uma **Fase**.
 
-A fase é sorteada pelo `generate/4` do `bce.pl` (#6) e tem solução única.
+A fase é sorteada pelo `generate/4` do `bce.pl` e tem solução única.
 O tamanho depende da dificuldade:
 
 | `dificuldade` | Mesa | Amigos |

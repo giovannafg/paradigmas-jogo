@@ -918,35 +918,6 @@ viewMiniGrade nome descricao marcadas =
         ]
 
 
-textoObjeto : Objeto -> String
-textoObjeto objeto =
-    case objeto of
-        Janela ->
-            "Janela"
-
-        Tomada ->
-            "Tomada"
-
-        Porta ->
-            "Porta"
-
-        Estante ->
-            "Estante"
-
-
-textoStatus : StatusMania -> String
-textoStatus status =
-    case status of
-        Respeitada ->
-            "Respeitada"
-
-        Violada ->
-            "Violada"
-
-        Pendente ->
-            "Pendente"
-
-
 textoEstrelas : Estrelas -> String
 textoEstrelas estrelas =
     case estrelas of
