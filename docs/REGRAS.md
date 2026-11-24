@@ -1,6 +1,6 @@
 # Regras do jogo: Mesa da BCE
 
-> Nome do projeto: **Mesa da BCE**. Nome do grupo: **a definir** (#1).
+> Nome do projeto: **Mesa da BCE**. Nome do grupo: **Os Sem Agenda**.
 > Ideia proposta pela Giovanna e escolhida por todos na issue #1.
 
 ## Premissa
@@ -19,8 +19,13 @@ estrutura: servidor Python, integração Prolog ↔ API e arquitetura Elm.
 ## O tabuleiro
 
 - A mesa é uma **grade de cadeiras** com `L` linhas e `C` colunas (ex.: 2x3).
-- Algumas cadeiras têm um **objeto fixo**: 🪟 janela, 🔌 tomada, 🚪 porta,
-  📚 estante. O objeto está *naquela cadeira*.
+- Algumas cadeiras têm um **objeto fixo**: 🚪 porta, 🔌 tomada e uma
+  decoração (🪟 janela ou 📚 estante). O objeto está *naquela cadeira*.
+  Nas fases sorteadas, a porta fica sempre na cadeira do canto de cima à
+  direita; a tomada e a decoração são sorteadas entre as outras.
+- A decoração não aparece em nenhuma mania nem é desenhada na tela: ela só
+  ocupa espaço no modelo, para que novas manias possam usá-la sem mudar a
+  API nem o Elm.
 - A fase pode começar com **amigos já sentados**, que não podem ser movidos,
   como os números fixos do Sudoku (ver "Por que existem amigos já sentados").
 - Ao lado da mesa ficam os **cards dos amigos** que entram na fase, cada um
@@ -66,14 +71,19 @@ fato em restrição CLP(FD).
 ## Como se joga
 
 1. O jogador clica num card de amigo e depois numa cadeira livre para
-   sentá-lo. Clicar num amigo já sentado o devolve para o lado da mesa.
-2. A cada jogada, cada mania aparece como ✅ (respeitada) ou ❌ (violada).
-   Manias que dependem de alguém que ainda não sentou ficam neutras.
-3. **Vitória:** todos os amigos da fase sentados e todas as manias ✅.
-4. **Dica:** o jogador pode pedir uma dica, que explica **um** passo do
-   raciocínio sem entregar a fase inteira.
-5. **Estrelas** (proposta): ⭐⭐⭐ sem dicas, ⭐⭐ com 1 ou 2 dicas, ⭐ com 3
-   ou mais.
+   sentá-lo. Clicar numa cadeira ocupada levanta quem está nela (quem já
+   começa sentado não sai do lugar).
+2. A cada jogada, o Prolog avalia cada mania como respeitada, violada ou
+   pendente (depende de alguém que ainda não sentou). O card e a cadeira de
+   quem tem a mania violada ficam em vermelho, assim como a cadeira da
+   jogada que causou o conflito.
+3. **Vitória:** todos os amigos da fase sentados e todas as manias
+   respeitadas.
+4. **Dica:** o jogador pode pedir uma dica, que mostra **uma** jogada
+   obrigatória e a mania que a força, sem entregar a fase inteira. O amigo
+   da dica fica destacado em amarelo.
+5. **Estrelas:** ⭐⭐⭐ sem dicas, ⭐⭐ com 1 ou 2 dicas, ⭐ com 3 ou mais.
+   Quem usa **Resolver** termina a fase sem estrelas.
 
 ## O que o Prolog faz
 
@@ -106,10 +116,14 @@ só com as manias acima, e **nenhuma tem solução única**. As manias são
 simétricas: espelhar a mesa ou trocar dois amigos de lugar quase sempre gera
 outra solução válida. Para que a solução seja única, o gerador precisa de
 pelo menos uma "âncora", como acontece no Sudoku com os números iniciais.
-O gerador (#6) usa **amigos já sentados**: fixa amigos da solução até ela
+O gerador usa **amigos já sentados**: fixa amigos da solução até ela
 ficar única e depois tira os que não fazem falta.
 
 ## Exemplo de fase (mesa 2x3)
+
+Esta é a fase `fase_exemplo/3` do `bce.pl`, usada nos testes plunit. Ela foi
+montada à mão, por isso a porta está à esquerda; nas fases sorteadas a porta
+fica sempre à direita.
 
 Porta no canto de cima à esquerda, tomada no canto de cima à direita.
 Amigos: Arthur, João, Mayara e **Bevi, que já começa sentado** na cadeira de
@@ -132,8 +146,8 @@ O raciocínio:
 └───────┴───────┴───────┘   Venceu! ⭐⭐⭐
 ```
 
-Uma dica possível no passo 3: *"A Mayara não pode ficar perto do João. Na
-fileira de cima, só a ponta da esquerda fica longe dele."*
+Pedindo uma dica no começo, o Prolog (`hint/4`) aponta o passo 2: sentar o
+João na linha 1, coluna 3, por causa da mania dele (a cadeira da tomada).
 
 ## Dificuldade
 
@@ -148,42 +162,23 @@ O gerador tem três níveis:
 Os amigos de cada fase são sorteados, então as manias que aparecem mudam de
 uma fase para outra.
 
-- **Extra, se der tempo:** medir a dificuldade pelo número de passos de
-  dedução, e um editor de manias em que o Prolog diz se a fase continua
-  possível ou quais regras entram em conflito.
-
 ## O que a tela mostra (Elm)
 
-- A mesa como grade, com os ícones dos objetos e os amigos sentados (os já
-  sentados aparecem travados).
-- Os cards dos amigos, cada um com a mania e o status ✅ ou ❌.
-- Botões **Nova fase** (com dificuldade), **Dica**, **Resolver** e
-  **Recomeçar**.
-- A explicação da dica e as mensagens de erro da API.
-- A tela de vitória com as estrelas.
+- A mesa como grade de cadeiras, com a porta e a tomada desenhadas e os
+  amigos sentados.
+- Na coluna da esquerda, os cards dos amigos da fase, cada um com a sua
+  mania; em vermelho quando a mania está violada.
+- Os botões de nível (**Fácil**, **Médio**, **Difícil**), que sorteiam uma
+  fase nova, e os botões **Dica**, **Resolver** e **Recomeçar**.
+- Uma janela **Regras do jogo** com o resumo deste documento.
+- A explicação da dica, as mensagens de erro da API e o resultado da fase
+  ("Você venceu!" com as estrelas, ou "Resolvido com ajuda").
+- O botão de modo claro/noturno.
 
-Os tipos estão em `frontend/src/Bce.elm` (#10): `type Amigo = Arthur | Bevi
+Os tipos estão em `frontend/src/Bce.elm`: `type Amigo = Arthur | Bevi
 | Felipe | Gabriel | Giovanna | Joao | Mayara`, `type Objeto = Janela |
 Tomada | Porta | Estante`, `type Mania = PertoDeObjeto Objeto | NaCadeiraDe
 Objeto | SemVizinhos | DeFrentePara (List Amigo) | PertoDe Amigo |
 LadoALadoCom Amigo | LongeDe Amigo`, `type StatusMania = Respeitada |
 Violada | Pendente` e `type Rodada = Jogando | Venceu Estrelas`. A `Fase` é
 um record com a mesa, os amigos, os fixos e as manias.
-
-## MVP
-
-Os 7 tipos de mania e as funções gerar, resolver e dar dica estão prontos
-no Prolog e na API, com mesas de 2x3 a 3x4 e de 4 a 7 amigos (ver
-"Dificuldade"). Falta ligar a tela (#11 e #12).
-
-## Pontos em aberto
-
-- [ ] Nome do grupo.
-- [ ] 🪟 janela e 📚 estante ainda não aparecem em nenhuma mania. Hoje o
-      gerador põe porta, tomada e uma janela ou estante sorteada, só como
-      decoração. Manter assim, ou alguém troca a mania para usá-las? Se
-      trocar, muda o `mania/2` no `bce.pl` e os testes do Prolog; a API e o
-      Elm continuam iguais.
-- [ ] Regra das estrelas: contar só dicas, ou também jogadas que deixam
-      alguma mania ❌? Hoje o `estrelasPorDicas` do `Bce.elm` (#10) conta só
-      dicas, como na proposta da regra 5.

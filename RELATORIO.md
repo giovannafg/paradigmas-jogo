@@ -15,7 +15,7 @@
 - **Nome do projeto:** Mesa da BCE
 - **Nome do grupo:** Os Sem Agenda
 - **Repositório:** [https://github.com/giovannafg/paradigmas-jogo](https://github.com/giovannafg/paradigmas-jogo)
-- **Commit ou tag entregue:** `v1.0`
+- **Commit ou tag entregue:** `main`
 - **Ponto de partida:** jogo inventado
 - **Slides da apresentação oral:** não há
 
@@ -23,7 +23,7 @@
 
 A **Mesa da BCE** é um quebra-cabeça lógico para navegador: o jogador precisa sentar os integrantes de um grupo de estudos em cadeiras de uma sala, respeitando simultaneamente as manias de cada personagem. O **Prolog** define as regras, avalia as jogadas, gera fases com solução única, resolve estados e fornece dicas; o **Elm** mantém o estado da interface e renderiza o tabuleiro; o **FastAPI/Python** realiza a integração via HTTP e Janus.
 
-O tabuleiro tem três níveis: **fácil (2×3, quatro personagens)**, **médio (3×3, cinco)** e **difícil (3×4, sete)** (`backend/prolog/bce.pl:460-462`). As mesas são desenhadas em linhas e colunas, com sprites de personagens e da tomada; a porta fica logicamente no canto superior direito e seu marcador aparece ao lado da primeira linha. A interface disponibiliza modo claro/noturno, seleção de dificuldade, dicas, solução automática, reinício, rolagem da lista de personagens e indicação visual de conflitos de regras.
+O tabuleiro tem três níveis: **fácil (2×3, quatro personagens)**, **médio (3×3, cinco)** e **difícil (3×4, sete)** (`backend/prolog/bce.pl:460-462`). As mesas são desenhadas em linhas e colunas, com sprites de personagens e da tomada; a porta fica logicamente no canto superior direito e seu marcador aparece ao lado da primeira linha. A interface disponibiliza modo claro/noturno, seleção de dificuldade, dicas, solução automática, reinício, uma janela com as regras do jogo, rolagem da lista de personagens e indicação visual de conflitos de regras, com layout que se ajusta ao tamanho da tela.
 
 As regras completas encontram-se em `docs/REGRAS.md`.
 
@@ -162,6 +162,7 @@ type alias Model =
     { tela : Tela
     , darkTheme : Bool
     , aguardando : Bool
+    , regrasAbertas : Bool
     }
 
 type Tela
@@ -178,15 +179,16 @@ type Msg
     | DescerPersonagens
     | RecebeuPosicaoPersonagens (Result Browser.Dom.Error Browser.Dom.Viewport)
     | RolagemConcluida
+    | AlternarRegras Bool
 ```
 
-Trechos de `Main.elm:17-77`. `Model` guarda a tela, o tema e se há requisição pendente. O registro `Partida` (`Main.elm:30`) guarda fase, dificuldade, estado, seleção, desfecho, dicas, conflito recente, erro e aviso. `Tela` impede que uma partida inexistente seja tratada como jogável; `Result` separa sucesso e falha de HTTP; `Maybe` indica dica ou aviso ausente. `Acao` representa as ações do jogador, enquanto `Msg` também representa respostas HTTP e a rolagem da lista.
+Trechos de `Main.elm:17-80`. `Model` guarda a tela, o tema, se há requisição pendente e se a janela de regras está aberta. O registro `Partida` (`Main.elm:31`) guarda fase, dificuldade, estado, seleção, desfecho, dicas, conflito recente, erro e aviso. `Tela` impede que uma partida inexistente seja tratada como jogável; `Result` separa sucesso e falha de HTTP; `Maybe` indica dica ou aviso ausente. `Acao` representa as ações do jogador, enquanto `Msg` também representa respostas HTTP e a rolagem da lista.
 
 Em `Bce.elm`, destacam-se `Amigo` (`:63`), `Objeto` (`:73`), `Mania` (`:217`), `Recusa` (`:276`), `StatusMania` (`:384`) e `Rodada` (`:432`). `sentar` e `levantar` retornam `Result Recusa (List Lugar)` (`:310`, `:331`), sem exceções para regras de ocupação.
 
 ### 6.2 Conceitos do paradigma funcional utilizados
 
-- [x] **Arquitetura Elm:** `main`, `init`, `update` e `view` (`Main.elm:80`, `:90`, `:96`, `:408`) implementam o ciclo Model–Update–View.
+- [x] **Arquitetura Elm:** `main`, `init`, `update` e `view` (`Main.elm:82`, `:92`, `:98`, `:414`) implementam o ciclo Model–Update–View.
 - [x] **Custom types e `case` exaustivo:** `Amigo`, `Mania`, `Recusa`, `Tela`, `Acao` e `Msg` representam conjuntos fechados de possibilidades.
 - [x] **`Maybe` e `Result`:** `Bce.amigoDeTexto` (`:161`) devolve `Maybe Amigo`, `Bce.maniaDeTexto` (`:556`) devolve `Result String Mania`, e as respostas da API são recebidas como `Result String ...`.
 - [x] **Funções de ordem superior:** `List.map`, `List.filter`, `List.concatMap`, `List.foldr` e `Result.map` aparecem no domínio, no processamento de manias e na renderização.
@@ -248,21 +250,21 @@ Existem três conjuntos de testes automatizados no repositório:
 - **Python (pytest):** `backend/tests/test_api_bce.py` cobre os endpoints de fase, estado, jogada, dica e resolução, incluindo requisições inválidas e os tamanhos dos níveis 2×3, 3×3 e 3×4.
 - **Elm (elm-test):** `frontend/tests/MainTest.elm` e `ApiTest.elm` verificam transições de estado, interações, erros e conversão entre JSON e tipos Elm.
 
-Os comandos de execução estão na seção 3. 
+Na versão entregue, `make test` roda **55 testes plunit** (mais 40 subtestes gerados por `forall`, que o SWI-Prolog 10 relata como `All 55 (+40 sub-tests) tests passed`), **24 testes pytest** e **30 testes elm-test**, todos passando. Os comandos de execução estão na seção 3.
 
 ## 9. Limitações e problemas conhecidos
 
 - **Geração probabilística:** `generate/4` testa até 50 candidatas. Se nenhuma satisfizer os critérios, a geração pode falhar (`bce.pl:453-457`).
 - **Alguns conflitos são estados intermediários:** o jogo permite sentar personagens ainda que manias sejam violadas, para que o jogador reorganize a mesa. Os estados `violada` e `pendente` não devem ser confundidos; a interface apresenta uma explicação do conflito.
-- **Compatibilidade visual:** a experiência usa sprites SVG e estilos responsivos; a disposição em telas muito estreitas requer validação manual. A porta é um marcador gráfico próximo à mesa superior direita, não um elemento interativo independente.
-- **Persistência:** o tema fica salvo no `localStorage`, mas a partida não possui persistência entre recargas; a inicialização carrega uma nova fase fácil (`Main.elm:90-93`).
+- **Compatibilidade visual:** a experiência usa sprites SVG e o layout se ajusta ao tamanho da tela, mas foi verificado só manualmente, em alguns navegadores e tamanhos de janela. A porta é um marcador gráfico próximo à mesa superior direita, não um elemento interativo independente.
+- **Persistência:** o tema fica salvo no `localStorage`, mas a partida não possui persistência entre recargas; a inicialização carrega uma nova fase fácil (`Main.elm:92-95`).
 - **Melhorias desejáveis:** automatizar testes da interface, melhorar comportamento da lista ao chegar ao fim e ampliar as verificações de acessibilidade em navegação por teclado e dispositivos móveis.
 
 ## 10. Contribuição de cada integrante
 
 | Integrante | Principais contribuições | Pull Requests |
 |---|---|---|
-| Arthur Ribeiro e Sousa | Implementou a dica (`hint`) que aponta a mania responsável por forçar a jogada e escreveu os testes plunit das regras e casos de borda, corrigindo o `estado_valido`. | [#26](https://github.com/giovannafg/paradigmas-jogo/pull/26), [#27](https://github.com/giovannafg/paradigmas-jogo/pull/27) |
+| Arthur Ribeiro e Sousa | Implementou a dica (`hint`) que aponta a mania responsável por forçar a jogada e escreveu os testes plunit das regras e casos de borda, corrigindo o `estado_valido`; ajustou o layout ao tamanho da tela e adicionou a janela de regras em Elm. | [#26](https://github.com/giovannafg/paradigmas-jogo/pull/26), [#27](https://github.com/giovannafg/paradigmas-jogo/pull/27), [#43](https://github.com/giovannafg/paradigmas-jogo/pull/43) |
 | Felipe Lopes Pedroza | Criou o módulo puro de tipos do domínio em Elm e redigiu as seções 6.2 e 6.3 do relatório (parte Elm). | [#29](https://github.com/giovannafg/paradigmas-jogo/pull/29), [#30](https://github.com/giovannafg/paradigmas-jogo/pull/30) |
 | Gabriel Dantas Bevilaqua Mendes | Implementou o resolvedor (`solve`/`count_solutions`) e o gerador de fases com solução única em Prolog, documentou as seções 5.1 a 5.3 do relatório e limpou o que restava do template do Sudoku. | [#24](https://github.com/giovannafg/paradigmas-jogo/pull/24), [#25](https://github.com/giovannafg/paradigmas-jogo/pull/25), [#36](https://github.com/giovannafg/paradigmas-jogo/pull/36), [#37](https://github.com/giovannafg/paradigmas-jogo/pull/37) |
 | Gabriel Henrique Castelo Costa | Implementou a tela da Mesa da BCE em Elm, ligando a interface às rotas da API. | [#33](https://github.com/giovannafg/paradigmas-jogo/pull/33) |
@@ -322,4 +324,4 @@ No Elm, a vantagem foi representar o domínio por tipos fechados e controlar os 
 
 O projeto evidencia a complementaridade entre os paradigmas: o lógico define e procura estados válidos; o funcional organiza a interação de maneira previsível e tipada. A integração HTTP permite que cada linguagem se concentre em suas características, com o custo adicional de converter dados e sincronizar os estados das camadas.
 
-Quando o construtor `Jogada` de `Consulta` passou a carregar o amigo e a posição (`Main.elm:63`), para que o update soubesse qual cadeira destacar em caso de conflito (`Main.elm:317-337`), o compilador do Elm apontou na hora todos os lugares que ainda usavam a forma antiga, inclusive os quatro testes de `MainTest.elm`. Numa linguagem dinâmica esse erro só apareceria em tempo de execução. No Prolog, o contrário: acrescentar uma mania nova foi só escrever mais um fato `mania/2` (`bce.pl:94-100`) e uma cláusula de `mania_vale/4` (`bce.pl:177-194`), sem mexer em `solve/4` nem em `hint/4`, porque a busca vem do CLP(FD).
+Quando o construtor `Jogada` de `Consulta` passou a carregar o amigo e a posição (`Main.elm:64`), para que o update soubesse qual cadeira destacar em caso de conflito (`Main.elm:321-343`), o compilador do Elm apontou na hora todos os lugares que ainda usavam a forma antiga, inclusive os quatro testes de `MainTest.elm`. Numa linguagem dinâmica esse erro só apareceria em tempo de execução. No Prolog, o contrário: acrescentar uma mania nova foi só escrever mais um fato `mania/2` (`bce.pl:94-100`) e uma cláusula de `mania_vale/4` (`bce.pl:177-194`), sem mexer em `solve/4` nem em `hint/4`, porque a busca vem do CLP(FD).
